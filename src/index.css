@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+/* Custom theme for Football Career Game */
+@theme {
+  --color-primary: #1e40af;
+  --color-primary-light: #3b82f6;
+  --color-primary-dark: #1e3a8a;
+  --color-secondary: #059669;
+  --color-secondary-light: #10b981;
+  --color-accent: #f59e0b;
+  --color-danger: #dc2626;
+  --color-surface: #1f2937;
+  --color-surface-light: #374151;
+  --color-background: #111827;
+  --color-text: #f9fafb;
+  --color-text-muted: #9ca3af;
+
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+
+  --transition-screen: 300ms ease-in-out;
+}
+
+/* Base styles for mobile-first design */
+html {
+  font-size: 16px;
+}
+
+body {
+  @apply bg-background text-text font-sans antialiased;
+  min-height: 100dvh;
+  touch-action: manipulation;
+}
+
+/* Ensure minimum touch target size (44x44px) */
+button,
+a,
+[role="button"] {
+  min-width: 44px;
+  min-height: 44px;
+}

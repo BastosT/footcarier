@@ -1,0 +1,679 @@
+/**
+ * Phone — Écran téléphone avec messagerie et réseaux sociaux.
+ * Accessible depuis l'écran principal via une icône.
+ */
+
+import { useState } from 'react';
+import { useNavigation } from '../hooks/useNavigation';
+import { useGameStore } from '../../store/gameStore';
+
+type PhoneTab = 'messages' | 'social';
+
+export function Phone() {
+  const { goHome } = useNavigation();
+  const gameState = useGameStore((s) => s.gameState);
+  const [activeTab, setActiveTab] = useState<PhoneTab>('messages');
+
+  if (!gameState) return null;
+
+  return (
+    <div className="min-h-dvh flex flex-col bg-background">
+      {/* Phone header */}
+      <header className="bg-surface p-4 flex items-center justify-between border-b border-surface-light">
+        <button onClick={goHome} className="text-primary-light text-sm">← Retour</button>
+        <h1 className="text-lg font-bold text-text">📱 Téléphone</h1>
+        <div className="w-12" />
+      </header>
+
+      {/* Tabs */}
+      <div className="flex bg-surface border-b border-surface-light">
+        <button
+          onClick={() => setActiveTab('messages')}
+          className={`flex-1 py-3 text-sm font-medium transition-colors ${
+            activeTab === 'messages'
+              ? 'text-primary-light border-b-2 border-primary-light'
+              : 'text-text-muted'
+          }`}
+        >
+          💬 Messages
+        </button>
+        <button
+          onClick={() => setActiveTab('social')}
+          className={`flex-1 py-3 text-sm font-medium transition-colors ${
+            activeTab === 'social'
+              ? 'text-primary-light border-b-2 border-primary-light'
+              : 'text-text-muted'
+          }`}
+        >
+          📲 Réseaux
+        </button>
+      </div>
+
+      {/* Content */}
+      {activeTab === 'messages' ? <MessagesView /> : <SocialView />}
+    </div>
+  );
+}
+
+// ─── Messages View ───────────────────────────────────────────────────────────
+
+type Contact = 'coach' | 'locker' | 'family' | 'agent';
+
+interface ContactInfo {
+  id: Contact;
+  name: string;
+  emoji: string;
+  lastMessage: string;
+}
+
+function MessagesView() {
+  const gameState = useGameStore((s) => s.gameState);
+  const [activeContact, setActiveContact] = useState<Contact | null>(null);
+
+  if (!gameState) return null;
+
+  const { career } = gameState;
+
+  const contacts: ContactInfo[] = [
+    { id: 'coach', name: `Coach ${career.currentClub.name}`, emoji: '🧑‍💼', lastMessage: 'Touche pour discuter...' },
+    { id: 'locker', name: 'Vestiaire', emoji: '👥', lastMessage: 'Groupe d\'équipe' },
+    { id: 'family', name: 'Famille', emoji: '👨‍👩‍👦', lastMessage: 'On est fiers de toi !' },
+    { id: 'agent', name: 'Agent', emoji: '🕴️', lastMessage: 'Des nouvelles du mercato...' },
+  ];
+
+  if (activeContact) {
+    return <ChatView contact={activeContact} onBack={() => setActiveContact(null)} />;
+  }
+
+  return (
+    <div className="flex-1 overflow-y-auto">
+      {contacts.map((contact) => (
+        <button
+          key={contact.id}
+          onClick={() => setActiveContact(contact.id)}
+          className="w-full flex items-center gap-3 p-4 border-b border-surface-light active:bg-surface transition-colors"
+        >
+          <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center">
+            <span className="text-xl">{contact.emoji}</span>
+          </div>
+          <div className="flex-1 text-left">
+            <p className="text-sm font-bold text-text">{contact.name}</p>
+            <p className="text-xs text-text-muted truncate">{contact.lastMessage}</p>
+          </div>
+          <span className="text-text-muted text-xs">›</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ─── Chat View ───────────────────────────────────────────────────────────────
+
+const CHAT_DATA: Record<Contact, { messages: { text: string; effect?: number; effectType?: string; reply: string; requiresCaptain?: boolean; requiresNotCaptain?: boolean }[] }> = {
+  coach: {
+    messages: [
+      // Général
+      { text: '💪 Je suis motivé pour le prochain match', effect: 4, effectType: 'coachRelation', reply: 'J\'aime cette attitude ! Continue comme ça.' },
+      { text: '🤝 Merci pour votre confiance coach', effect: 5, effectType: 'coachRelation', reply: 'Tu es important pour l\'équipe. Reste concentré.' },
+      { text: '📈 Comment m\'améliorer ?', effect: 3, effectType: 'coachRelation', reply: 'Travaille ta condition et ta régularité. Les détails font la différence.' },
+      // Demandes
+      { text: '🙏 Demander plus de temps de jeu', effect: -3, effectType: 'coachRelation', reply: 'Je note. Prouve-le à l\'entraînement et en match.' },
+      { text: '🔄 Je veux être transféré', effect: -10, effectType: 'coachRelation', reply: 'C\'est décevant. On en reparlera au mercato si tu insistes.' },
+      { text: '😤 Pas d\'accord avec vos choix tactiques', effect: -7, effectType: 'coachRelation', reply: 'Je décide ici. Concentre-toi sur ton jeu, pas sur le mien.' },
+      // Tactique
+      { text: '📋 Quelle est la tactique pour le prochain match ?', effect: 2, effectType: 'coachRelation', reply: 'On va jouer en 4-3-3 offensif. Ton rôle sera clé dans la transition.' },
+      { text: '🎯 Je veux jouer plus haut sur le terrain', effect: -2, effectType: 'coachRelation', reply: 'On verra selon l\'adversaire. Pour l\'instant, reste discipliné.' },
+      { text: '🛡️ Je peux aider en défense aussi', effect: 4, effectType: 'coachRelation', reply: 'Bonne mentalité ! Un joueur complet, c\'est ce qu\'il me faut.' },
+      // Repos
+      { text: '🧘 J\'ai besoin d\'un jour de repos', effect: -1, effectType: 'coachRelation', reply: 'OK, prends demain. Mais je te veux à 100% après.' },
+      { text: '💊 Je me sens un peu fatigué', effect: 1, effectType: 'coachRelation', reply: 'Va voir le kiné. Ta santé passe avant tout.' },
+      // Capitanat
+      { text: '©️ Je veux être capitaine', effect: -5, effectType: 'coachRelation', reply: 'Le brassard se mérite. Montre l\'exemple au quotidien et on en reparle.', requiresNotCaptain: true },
+      { text: '©️ Merci pour le brassard, je ne vous décevrai pas', effect: 6, effectType: 'coachRelation', reply: 'Tu le mérites. Montre l\'exemple et guide cette équipe.', requiresCaptain: true },
+      { text: '📣 En tant que capitaine, je propose un meeting d\'équipe', effect: 3, effectType: 'coachRelation', reply: 'Bonne initiative. Organise ça, je te fais confiance.', requiresCaptain: true },
+    ],
+  },
+  locker: {
+    messages: [
+      // Général
+      { text: '🎉 Bien joué les gars !', effect: 3, effectType: 'teamMorale', reply: 'Merci frérot ! On est une équipe 💪' },
+      { text: '💪 On va gagner le prochain match', effect: 2, effectType: 'teamMorale', reply: 'Ouais ! On est chauds 🔥' },
+      { text: '🍕 Qui veut sortir ce soir ?', effect: 4, effectType: 'teamMorale', reply: 'Moi ! On se retrouve au resto 🍝' },
+      { text: '🤝 On est ensemble, quoi qu\'il arrive', effect: 5, effectType: 'teamMorale', reply: 'Toujours ! Un pour tous 🤜🤛' },
+      { text: '⚽ Qui veut s\'entraîner en plus ?', effect: 3, effectType: 'teamMorale', reply: 'Je suis partant ! Demain après l\'entraînement ?' },
+      { text: '😤 Faut se réveiller les gars', effect: -2, effectType: 'teamMorale', reply: 'Calme-toi... on fait ce qu\'on peut.' },
+      // Social
+      { text: '🎮 Soirée FIFA chez moi ce soir ?', effect: 4, effectType: 'teamMorale', reply: 'Grave ! J\'amène les manettes 🎮' },
+      { text: '🎂 Joyeux anniversaire au vestiaire !', effect: 3, effectType: 'teamMorale', reply: 'Merci bro ! On fête ça après l\'entraînement 🎉' },
+      { text: '🏖️ On organise un week-end team building ?', effect: 5, effectType: 'teamMorale', reply: 'Trop bien ! Paintball ou karting ? 🏎️' },
+      // Conflits
+      { text: '🤫 Y\'a des tensions dans le vestiaire ?', effect: -1, effectType: 'teamMorale', reply: 'Un peu entre certains... Rien de grave pour l\'instant.' },
+      { text: '🕊️ Faut qu\'on règle les problèmes entre nous', effect: 3, effectType: 'teamMorale', reply: 'T\'as raison. On en parle au prochain repas d\'équipe.' },
+      // Capitaine
+      { text: '©️ Les gars, on doit se serrer les coudes !', effect: 7, effectType: 'teamMorale', reply: '🫡 Oui capitaine ! On te suit !', requiresCaptain: true },
+      { text: '📢 Discours de motivation avant le match', effect: 8, effectType: 'teamMorale', reply: '🔥🔥🔥 ON EST PRÊTS ! ALLEZ LES GARS !!!', requiresCaptain: true },
+      { text: '🛡️ En tant que capitaine, je prends la responsabilité', effect: 6, effectType: 'teamMorale', reply: 'Respect capitaine. On sait qu\'on peut compter sur toi 💪', requiresCaptain: true },
+      { text: '⚔️ Ce soir on se bat pour le maillot !', effect: 7, effectType: 'teamMorale', reply: 'ALLEZ ! Pour le club, pour nous ! ⚽🔥', requiresCaptain: true },
+      { text: '🤝 Résoudre un conflit entre coéquipiers', effect: 5, effectType: 'teamMorale', reply: 'Merci d\'avoir géré ça capitaine. L\'ambiance est meilleure maintenant.', requiresCaptain: true },
+    ],
+  },
+  family: {
+    messages: [
+      { text: '❤️ Vous me manquez', reply: 'Tu nous manques aussi ! On regarde tous tes matchs à la télé 📺' },
+      { text: '🏠 Je passe ce week-end', reply: 'Super ! Maman prépare ton plat préféré 🍲' },
+      { text: '🎓 Tout va bien chez vous ?', reply: 'Oui ! Ton petit frère a eu son bac ! 🎉' },
+      { text: '💰 J\'ai envoyé de l\'argent', reply: 'Merci mon fils, tu es trop généreux ❤️' },
+      { text: '📺 Vous avez vu le match ?', reply: 'Oui !! On a crié quand tu as touché le ballon 😂' },
+      { text: '🎄 On se voit pour les fêtes ?', reply: 'Évidemment ! Toute la famille sera là 🎄❤️' },
+      { text: '📸 Je vous envoie des photos du stade', reply: 'Waouh c\'est immense ! On est tellement fiers 🥹' },
+    ],
+  },
+  agent: {
+    messages: [
+      { text: '📋 Des clubs intéressés ?', reply: 'Je sonde le marché. Continue à performer et les offres viendront.' },
+      { text: '💰 Je veux une augmentation', reply: 'Je vais en parler au club. Avec tes stats actuelles, c\'est jouable.' },
+      { text: '🌍 Je veux jouer à l\'étranger', reply: 'Intéressant. Je vais contacter mes réseaux en Espagne et en Angleterre.' },
+      { text: '📰 Qu\'est-ce qu\'on dit de moi ?', reply: 'La presse parle de toi en bien. Ta cote monte !' },
+      { text: '🤝 Merci pour ton travail', reply: 'C\'est mon job ! On va faire de grandes choses ensemble.' },
+      { text: '📊 Quelle est ma valeur marchande ?', reply: 'Elle augmente chaque mois. Continue comme ça et les gros clubs viendront.' },
+      { text: '🎙️ Des opportunités de sponsoring ?', reply: 'J\'ai quelques pistes. Ta visibilité sur les réseaux aide beaucoup.' },
+    ],
+  },
+};
+
+function ChatView({ contact, onBack }: { contact: Contact; onBack: () => void }) {
+  const gameState = useGameStore((s) => s.gameState);
+  const [conversation, setConversation] = useState<{ from: 'player' | 'other'; text: string }[]>([]);
+  const [showOptions, setShowOptions] = useState(true);
+
+  if (!gameState) return null;
+
+  const { career, social } = gameState;
+  const isCaptain = career.isCaptain ?? false;
+
+  // Filter messages based on captain status
+  const allMessages = CHAT_DATA[contact].messages;
+  const chatMessages = allMessages.filter((msg) => {
+    if (msg.requiresCaptain && !isCaptain) return false;
+    if (msg.requiresNotCaptain && isCaptain) return false;
+    return true;
+  });
+
+  const contactNames: Record<Contact, string> = {
+    coach: `Coach ${career.currentClub.name}`,
+    locker: 'Vestiaire',
+    family: 'Famille',
+    agent: 'Agent',
+  };
+  const contactEmojis: Record<Contact, string> = { coach: '🧑‍💼', locker: '👥', family: '👨‍👩‍👦', agent: '🕴️' };
+
+  const getRelationInfo = () => {
+    if (contact === 'coach') return `Relation : ${social.coachRelation}/100${isCaptain ? ' • ©️ Capitaine' : ''}`;
+    if (contact === 'locker') return `Moral équipe : ${social.teamMorale ?? 50}/100${isCaptain ? ' • ©️ Capitaine' : ''}`;
+    return '';
+  };
+
+  // Check if player can become captain (coachRelation >= 70 && teamRelation >= 60)
+  const canBecomeCaptain = !isCaptain && social.coachRelation >= 70 && (social.teamRelation ?? 50) >= 60;
+
+  const handleSend = (msg: typeof allMessages[0]) => {
+    setConversation((prev) => [...prev, { from: 'player', text: msg.text }]);
+    setShowOptions(false);
+
+    // Special case: asking for captaincy
+    const isAskingCaptain = msg.text.includes('Je veux être capitaine');
+
+    setTimeout(() => {
+      let replyText = msg.reply;
+
+      // If asking for captain and eligible, grant it
+      if (isAskingCaptain && canBecomeCaptain) {
+        replyText = '©️ Tu sais quoi ? Tu le mérites. À partir de maintenant, tu es le capitaine de cette équipe. Montre l\'exemple !';
+        const state = useGameStore.getState();
+        if (state.gameState) {
+          useGameStore.setState({
+            gameState: {
+              ...state.gameState,
+              career: { ...state.gameState.career, isCaptain: true },
+              social: {
+                ...state.gameState.social,
+                coachRelation: Math.min(100, state.gameState.social.coachRelation + 5),
+                teamRelation: Math.min(100, (state.gameState.social.teamRelation ?? 50) + 5),
+              },
+            },
+          });
+        }
+      } else {
+        // Apply normal effect
+        if (msg.effect && msg.effectType) {
+          const state = useGameStore.getState();
+          if (state.gameState) {
+            const gs = state.gameState;
+            if (msg.effectType === 'coachRelation') {
+              const newVal = Math.max(0, Math.min(100, gs.social.coachRelation + msg.effect));
+              useGameStore.setState({ gameState: { ...gs, social: { ...gs.social, coachRelation: newVal } } });
+            } else if (msg.effectType === 'teamMorale') {
+              const newVal = Math.max(0, Math.min(100, (gs.social.teamMorale ?? 50) + msg.effect));
+              useGameStore.setState({ gameState: { ...gs, social: { ...gs.social, teamMorale: newVal } } });
+            }
+          }
+        }
+      }
+
+      setConversation((prev) => [...prev, { from: 'other', text: replyText }]);
+      setTimeout(() => setShowOptions(true), 500);
+    }, 800);
+  };
+
+  return (
+    <div className="flex-1 flex flex-col">
+      {/* Chat header */}
+      <div className="p-3 flex items-center gap-3 border-b border-surface-light bg-surface">
+        <button onClick={onBack} className="text-primary-light text-sm">←</button>
+        <div className="w-9 h-9 bg-primary/20 rounded-full flex items-center justify-center">
+          <span className="text-base">{contactEmojis[contact]}</span>
+        </div>
+        <div>
+          <p className="text-sm font-bold text-text">{contactNames[contact]}</p>
+          {getRelationInfo() && <p className="text-xs text-text-muted">{getRelationInfo()}</p>}
+        </div>
+      </div>
+
+      {/* Conversation */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        {/* Captain status hint */}
+        {contact === 'coach' && !isCaptain && canBecomeCaptain && (
+          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-2.5 text-center mb-2">
+            <p className="text-xs text-yellow-400 font-medium">©️ Le coach est prêt à te donner le brassard ! Demande-le.</p>
+          </div>
+        )}
+        {contact === 'coach' && !isCaptain && !canBecomeCaptain && (
+          <div className="bg-surface rounded-xl p-2.5 text-center mb-2">
+            <p className="text-xs text-text-muted">©️ Capitanat : Coach {social.coachRelation}/70 • Équipe {social.teamRelation ?? 50}/60</p>
+          </div>
+        )}
+
+        {/* Initial message */}
+        <div className="flex gap-2">
+          <div className="w-7 h-7 bg-primary/20 rounded-full flex items-center justify-center flex-shrink-0">
+            <span className="text-xs">{contactEmojis[contact]}</span>
+          </div>
+          <div className="bg-surface rounded-2xl rounded-tl-sm p-3 max-w-[80%]">
+            <p className="text-sm text-text">
+              {contact === 'coach' && (isCaptain ? 'Salut capitaine ! Qu\'est-ce que je peux faire pour toi ?' : 'Salut ! Besoin de quelque chose ?')}
+              {contact === 'locker' && (isCaptain ? 'Yo capitaine ! On t\'écoute 🫡' : 'Yo ! Quoi de neuf ? 🤙')}
+              {contact === 'family' && 'Coucou mon fils ! Comment ça va ? ❤️'}
+              {contact === 'agent' && 'Salut champion. Des questions ?'}
+            </p>
+          </div>
+        </div>
+
+        {conversation.map((msg, idx) => (
+          <div key={idx} className={`flex gap-2 ${msg.from === 'player' ? 'justify-end' : ''}`}>
+            {msg.from === 'other' && (
+              <div className="w-7 h-7 bg-primary/20 rounded-full flex items-center justify-center flex-shrink-0">
+                <span className="text-xs">{contactEmojis[contact]}</span>
+              </div>
+            )}
+            <div className={`rounded-2xl p-3 max-w-[80%] ${
+              msg.from === 'player'
+                ? 'bg-primary text-white rounded-tr-sm'
+                : 'bg-surface rounded-tl-sm'
+            }`}>
+              <p className={`text-sm ${msg.from === 'player' ? 'text-white' : 'text-text'}`}>{msg.text}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Message options */}
+      {showOptions && (
+        <div className="p-3 border-t border-surface-light bg-background max-h-44 overflow-y-auto">
+          <div className="grid grid-cols-1 gap-1.5">
+            {chatMessages.map((msg, idx) => (
+              <button
+                key={idx}
+                onClick={() => handleSend(msg)}
+                className="p-2.5 bg-surface rounded-xl text-left active:scale-[0.98] transition-all border border-surface-light"
+              >
+                <p className="text-xs text-text">{msg.text}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Social View — Instagram ─────────────────────────────────────────────────
+
+function SocialView() {
+  const gameState = useGameStore((s) => s.gameState);
+  const [postMessage, setPostMessage] = useState<string | null>(null);
+
+  if (!gameState) return null;
+
+  const instagram = gameState.lifestyle?.instagram ?? { followers: 1000, posts: [], weeklyPostDone: false };
+  const { player, career } = gameState;
+
+  const formatFollowers = (n: number): string => {
+    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+    if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+    return `${n}`;
+  };
+
+  const postOptions = [
+    { type: 'photo' as const, caption: '📸 Photo à l\'entraînement', emoji: '🏟️', baseGain: { min: 50, max: 200 } },
+    { type: 'photo' as const, caption: '🏆 Selfie avec le trophée', emoji: '🤳', baseGain: { min: 100, max: 400 } },
+    { type: 'photo' as const, caption: '👟 Nouvelle paire de crampons', emoji: '👟', baseGain: { min: 30, max: 150 } },
+    { type: 'story' as const, caption: '🎬 Story jour de match', emoji: '📱', baseGain: { min: 20, max: 100 } },
+    { type: 'story' as const, caption: '🍽️ Story au restaurant', emoji: '🍕', baseGain: { min: 10, max: 80 } },
+    { type: 'reel' as const, caption: '🎥 Reel skills à l\'entraînement', emoji: '⚽', baseGain: { min: 200, max: 800 } },
+    { type: 'reel' as const, caption: '🎥 Reel lifestyle', emoji: '🚗', baseGain: { min: 100, max: 500 } },
+  ];
+
+  const handlePost = (option: typeof postOptions[0]) => {
+    const state = useGameStore.getState();
+    if (!state.gameState) return;
+
+    const ig = state.gameState.lifestyle.instagram ?? { followers: 1000, posts: [], weeklyPostDone: false };
+
+    if (ig.weeklyPostDone) {
+      setPostMessage('⏳ Tu as déjà posté cette semaine !');
+      setTimeout(() => setPostMessage(null), 3000);
+      return;
+    }
+
+    // Calculate followers gained
+    const rng = Math.random;
+    const baseGain = option.baseGain.min + Math.floor(rng() * (option.baseGain.max - option.baseGain.min));
+
+    // Bonus based on club tier and player rating
+    const tierMultiplier = career.currentClub.tier === 'big' ? 3 : career.currentClub.tier === 'medium' ? 1.5 : 1;
+    const ratingBonus = Math.floor((player.overallRating - 60) * 5);
+
+    // Viral chance: 10% for reels, 5% for photos, 2% for stories
+    const viralChance = option.type === 'reel' ? 0.10 : option.type === 'photo' ? 0.05 : 0.02;
+    const isViral = rng() < viralChance;
+    const viralMultiplier = isViral ? 5 + Math.floor(rng() * 5) : 1; // 5x-10x if viral
+
+    const followersGained = Math.round((baseGain + ratingBonus) * tierMultiplier * viralMultiplier);
+    const likes = Math.round(followersGained * (3 + rng() * 5));
+
+    const newPost = {
+      id: `post-${Date.now()}`,
+      type: option.type,
+      caption: option.caption,
+      likes,
+      followersGained,
+      date: state.gameState.time.currentDate,
+      viral: isViral,
+    };
+
+    const newFollowers = ig.followers + followersGained;
+
+    useGameStore.setState({
+      gameState: {
+        ...state.gameState,
+        lifestyle: {
+          ...state.gameState.lifestyle,
+          instagram: {
+            followers: newFollowers,
+            posts: [newPost, ...ig.posts].slice(0, 50),
+            weeklyPostDone: true,
+          },
+        },
+      },
+    });
+
+    if (isViral) {
+      setPostMessage(`🔥 POST VIRAL ! +${followersGained} abonnés ! (${formatFollowers(newFollowers)} total)`);
+    } else {
+      setPostMessage(`📸 Posté ! +${followersGained} abonnés (${formatFollowers(newFollowers)} total)`);
+    }
+    setTimeout(() => setPostMessage(null), 4000);
+  };
+
+  return (
+    <div className="flex-1 overflow-y-auto pb-20">
+      {/* Instagram header */}
+      <div className="p-4 bg-gradient-to-r from-purple-600/20 to-pink-500/20 border-b border-surface-light">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+              <span className="text-2xl">📸</span>
+            </div>
+            <div>
+              <p className="text-sm font-bold text-text">@{player.firstName.toLowerCase()}{player.lastName.toLowerCase()}</p>
+              <p className="text-xs text-text-muted">{career.currentClub.name}</p>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-xl font-black text-text">{formatFollowers(instagram.followers)}</p>
+            <p className="text-xs text-text-muted">abonnés</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Post message */}
+      {postMessage && (
+        <div className="mx-4 mt-3 p-3 bg-green-500/20 border border-green-500/40 rounded-xl text-center">
+          <p className="text-sm text-green-400 font-medium">{postMessage}</p>
+        </div>
+      )}
+
+      {/* Post options */}
+      <div className="p-4">
+        <h3 className="text-sm font-bold text-text mb-3">
+          {instagram.weeklyPostDone ? '⏳ Prochain post la semaine prochaine' : '📸 Publier (1x/semaine)'}
+        </h3>
+        <div className="space-y-2">
+          {postOptions.map((option, idx) => (
+            <button
+              key={idx}
+              onClick={() => handlePost(option)}
+              disabled={instagram.weeklyPostDone}
+              className={`w-full p-3 rounded-xl flex items-center gap-3 border transition-all ${
+                instagram.weeklyPostDone
+                  ? 'bg-surface/50 border-surface-light opacity-50'
+                  : 'bg-surface border-surface-light active:scale-[0.98]'
+              }`}
+            >
+              <span className="text-2xl">{option.emoji}</span>
+              <div className="flex-1 text-left">
+                <p className="text-sm text-text">{option.caption}</p>
+                <p className="text-xs text-text-muted">
+                  {option.type === 'reel' ? '🎥 Reel' : option.type === 'story' ? '📱 Story' : '📷 Photo'}
+                  {' • '}+{option.baseGain.min}-{option.baseGain.max} abonnés
+                </p>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Recent posts */}
+      {/* Recent posts */}
+      {instagram.posts.length > 0 && (
+        <div className="p-4 pt-0">
+          <h3 className="text-sm font-bold text-text mb-3">📋 Derniers posts</h3>
+          <div className="space-y-2">
+            {instagram.posts.slice(0, 5).map((post) => (
+              <div key={post.id} className="bg-surface rounded-xl p-3 border border-surface-light">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-text">{post.caption}</p>
+                  {post.viral && <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full">🔥 Viral</span>}
+                </div>
+                <div className="flex items-center gap-3 mt-1">
+                  <span className="text-xs text-text-muted">❤️ {post.likes.toLocaleString()}</span>
+                  <span className="text-xs text-green-400">+{post.followersGained} abonnés</span>
+                  <span className="text-xs text-text-muted">{post.date.day}/{post.date.month}</span>
+                </div>
+                {/* Random fan comments */}
+                <div className="mt-2 space-y-1">
+                  {generateFanComments(post, player.lastName).map((comment, i) => (
+                    <p key={i} className="text-xs text-text-muted">
+                      <span className="font-medium text-text">{comment.user}</span> {comment.text}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Milestones */}
+      <div className="p-4 pt-0">
+        <h3 className="text-sm font-bold text-text mb-3">🎯 Paliers</h3>
+        <div className="space-y-2">
+          {FOLLOWER_MILESTONES.map((milestone) => {
+            const reached = instagram.followers >= milestone.count;
+            return (
+              <div key={milestone.count} className={`flex items-center gap-3 p-2 rounded-lg ${reached ? 'bg-green-500/10' : 'bg-surface'}`}>
+                <span className="text-lg">{reached ? '✅' : '🔒'}</span>
+                <div className="flex-1">
+                  <p className={`text-xs font-medium ${reached ? 'text-green-400' : 'text-text-muted'}`}>
+                    {formatFollowers(milestone.count)} abonnés
+                  </p>
+                  <p className="text-xs text-text-muted">{milestone.reward}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Brand DMs / Sponsoring */}
+      <div className="p-4 pt-0">
+        <h3 className="text-sm font-bold text-text mb-3">📩 Messages de marques</h3>
+        {instagram.followers >= 5000 ? (
+          <div className="space-y-2">
+            {generateBrandDMs(instagram.followers).map((dm, idx) => (
+              <div key={idx} className="bg-surface rounded-xl p-3 border border-surface-light">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-sm">{dm.emoji}</span>
+                  <p className="text-xs font-bold text-text">{dm.brand}</p>
+                  <span className="text-[10px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded">Sponsorisé</span>
+                </div>
+                <p className="text-xs text-text-muted">{dm.message}</p>
+                <p className="text-xs text-green-400 mt-1">💰 {dm.offer}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-text-muted">Atteins 5K abonnés pour recevoir des offres de marques</p>
+        )}
+      </div>
+
+      {/* Feed — Other players */}
+      <div className="p-4 pt-0">
+        <h3 className="text-sm font-bold text-text mb-3">🌐 Feed</h3>
+        <div className="space-y-3">
+          {generateFeedPosts(career.currentClub.country).map((feedPost, idx) => (
+            <div key={idx} className="bg-surface rounded-xl p-3 border border-surface-light">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-7 h-7 bg-primary/20 rounded-full flex items-center justify-center">
+                  <span className="text-xs">⚽</span>
+                </div>
+                <p className="text-xs font-bold text-text">{feedPost.player}</p>
+                <p className="text-xs text-text-muted">• {feedPost.club}</p>
+              </div>
+              <p className="text-sm text-text">{feedPost.caption}</p>
+              <div className="flex items-center gap-3 mt-2">
+                <span className="text-xs text-text-muted">❤️ {feedPost.likes.toLocaleString()}</span>
+                <span className="text-xs text-text-muted">💬 {feedPost.comments}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Instagram Helpers ───────────────────────────────────────────────────────
+
+const FOLLOWER_MILESTONES = [
+  { count: 1000, reward: 'Début de carrière' },
+  { count: 5000, reward: '🔓 Offres de marques débloquées' },
+  { count: 10000, reward: '🔓 Badge vérifié' },
+  { count: 50000, reward: '🔓 Partenariats premium' },
+  { count: 100000, reward: '🔓 Statut influenceur' },
+  { count: 500000, reward: '🔓 Contrats publicitaires' },
+  { count: 1000000, reward: '🔓 Icône des réseaux' },
+];
+
+function generateFanComments(post: any, playerName: string): { user: string; text: string }[] {
+  const comments = [
+    { user: 'fan_foot_92', text: `🔥🔥🔥 ${playerName} le GOAT` },
+    { user: 'soccer_lover', text: 'Trop fort ! 💪' },
+    { user: 'ultras_paris', text: 'On est avec toi ! 🫶' },
+    { user: 'football_daily', text: 'Quelle classe 👏' },
+    { user: 'sport_news', text: 'Le futur Ballon d\'Or ? 🏆' },
+    { user: 'maria_2003', text: '😍😍😍' },
+    { user: 'coach_amateur', text: 'Quel talent ! Continue comme ça' },
+    { user: 'hater_123', text: 'Surcoté...' },
+  ];
+
+  // Pick 2-3 random comments based on post id
+  const seed = post.id.split('').reduce((s: number, c: string) => s + c.charCodeAt(0), 0);
+  const count = 2 + (seed % 2);
+  const selected: { user: string; text: string }[] = [];
+  for (let i = 0; i < count; i++) {
+    selected.push(comments[(seed + i * 3) % comments.length]);
+  }
+  return selected;
+}
+
+function generateBrandDMs(followers: number): { brand: string; emoji: string; message: string; offer: string }[] {
+  const allBrands = [
+    { brand: 'Nike', emoji: '👟', message: 'On aimerait te proposer un partenariat...', offer: '2 000€/mois', minFollowers: 5000 },
+    { brand: 'Adidas', emoji: '⚽', message: 'Tu nous intéresses pour notre prochaine campagne', offer: '3 000€/mois', minFollowers: 10000 },
+    { brand: 'Puma', emoji: '🐆', message: 'Collaboration possible ?', offer: '1 500€/mois', minFollowers: 5000 },
+    { brand: 'Hublot', emoji: '⌚', message: 'Ambassadeur de notre nouvelle collection ?', offer: '5 000€/mois', minFollowers: 50000 },
+    { brand: 'Gucci', emoji: '👔', message: 'On te veut pour notre défilé', offer: '8 000€/mois', minFollowers: 100000 },
+    { brand: 'EA Sports', emoji: '🎮', message: 'Cover du prochain FC ?', offer: '50 000€', minFollowers: 500000 },
+    { brand: 'Pepsi', emoji: '🥤', message: 'Pub TV mondiale ?', offer: '100 000€', minFollowers: 1000000 },
+  ];
+
+  return allBrands.filter((b) => followers >= b.minFollowers).slice(0, 3);
+}
+
+function generateFeedPosts(country: string): { player: string; club: string; caption: string; likes: number; comments: number }[] {
+  const feedByCountry: Record<string, { player: string; club: string; caption: string }[]> = {
+    france: [
+      { player: 'K. Mbappé', club: 'PSG', caption: '⚡ Toujours plus vite, toujours plus haut' },
+      { player: 'A. Griezmann', club: 'Atlético', caption: '🎮 Soirée Fortnite avec les potes' },
+      { player: 'O. Dembélé', club: 'PSG', caption: '🏋️ No days off 💪' },
+    ],
+    england: [
+      { player: 'E. Haaland', club: 'Man City', caption: '⚽ Another day, another goal' },
+      { player: 'B. Saka', club: 'Arsenal', caption: '🌟 God is good 🙏' },
+      { player: 'M. Salah', club: 'Liverpool', caption: '🏆 Never stop grinding' },
+    ],
+    spain: [
+      { player: 'J. Bellingham', club: 'Real Madrid', caption: '🤍 Hala Madrid y nada más' },
+      { player: 'L. Yamal', club: 'Barcelona', caption: '🔵🔴 Més que un club' },
+      { player: 'A. Griezmann', club: 'Atlético', caption: '❤️🤍 Aúpa Atleti' },
+    ],
+    italy: [
+      { player: 'L. Martínez', club: 'Inter', caption: '🖤💙 Forza Inter!' },
+      { player: 'D. Vlahovic', club: 'Juventus', caption: '⚪⚫ Fino alla fine' },
+      { player: 'R. Leão', club: 'AC Milan', caption: '🔴⚫ Rossoneri forever' },
+    ],
+    germany: [
+      { player: 'H. Kane', club: 'Bayern', caption: '🔴 Mia san mia' },
+      { player: 'F. Wirtz', club: 'Leverkusen', caption: '⚽ Living the dream' },
+      { player: 'J. Musiala', club: 'Bayern', caption: '🇩🇪 Proud to represent' },
+    ],
+  };
+
+  const posts = feedByCountry[country] ?? feedByCountry['france'];
+  return posts.map((p) => ({
+    ...p,
+    likes: 50000 + Math.floor(Math.random() * 500000),
+    comments: 200 + Math.floor(Math.random() * 5000),
+  }));
+}
