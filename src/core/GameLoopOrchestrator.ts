@@ -35,7 +35,7 @@ import { SocialSystem, type MatchOutcome } from '../systems/social/SocialSystem'
 import { SocialFeedGenerator } from '../systems/social/SocialFeedGenerator';
 import { TransferSystem } from '../systems/transfer/TransferSystem';
 import { InjurySystem } from '../systems/injury/InjurySystem';
-import { simulateMatchday, updateTopScorers } from '../systems/league/LeagueEngine';
+import { simulateMatchday } from '../systems/league/LeagueEngine';
 import { FitnessManager } from '../systems/match/FitnessManager';
 import { TrainingManager } from '../systems/training/TrainingManager';
 import { MatchSimulator } from '../systems/match/MatchSimulator';
