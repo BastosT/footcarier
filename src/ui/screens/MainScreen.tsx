@@ -53,8 +53,8 @@ export function MainScreen({
   return (
     <div className="min-h-dvh flex flex-col bg-background overflow-y-auto pb-20">
       {/* Hero header with gradient */}
-      <section className="relative bg-gradient-to-b from-primary/30 to-background pt-8 pb-6 px-4">
-        <div className="flex items-center gap-4">
+      <section className="relative bg-gradient-to-b from-primary/30 to-background pt-safe-top px-4" style={{ paddingTop: 'max(2rem, env(safe-area-inset-top, 2rem))' }}>
+        <div className="flex items-center gap-4 pb-4">
           <Avatar appearance={player.appearance} size="md" />
           <div className="flex-1">
             <h1 className="text-xl font-bold text-text">
@@ -72,7 +72,7 @@ export function MainScreen({
           </div>
         </div>
         {/* Date badge + Phone */}
-        <div className="absolute top-4 right-4 flex items-center gap-2">
+        <div className="absolute top-4 right-4 flex items-center gap-2" style={{ top: 'max(1rem, env(safe-area-inset-top, 1rem))' }}>
           {onPhone && (
             <button
               onClick={onPhone}
@@ -90,7 +90,7 @@ export function MainScreen({
 
       {/* Next match card */}
       {nextMatch && (
-        <section className="px-4 -mt-2 mb-4">
+        <section className="px-4 mb-4">
           <div className={`rounded-2xl p-4 border ${isMatchDay ? 'bg-secondary/10 border-secondary/40' : 'bg-surface border-surface-light'}`}>
             <div className="flex items-center justify-between mb-2">
               <p className="text-xs font-medium text-text-muted">
