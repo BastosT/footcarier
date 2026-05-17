@@ -91,6 +91,7 @@ export function createInitialSocialState(): SocialState {
     coachRelation: 50,
     teamRelation: 50,
     teamMorale: 50,
+    teamAmbiance: 50,
     socialFeed: [],
     pendingInterviews: [],
   };

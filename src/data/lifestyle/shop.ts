@@ -3,7 +3,7 @@
  * Prix réalistes. La boutique change chaque semaine (sélection aléatoire).
  */
 
-export type ItemCategory = 'house' | 'car' | 'jewelry' | 'fashion';
+export type ItemCategory = 'house' | 'car' | 'jewelry' | 'fashion' | 'yacht' | 'jet';
 
 export interface ShopItem {
   id: string;
@@ -119,9 +119,42 @@ export const ALL_FASHION: ShopItem[] = [
   { id: 'suit-tomford', name: 'Costume Tom Ford', category: 'fashion', price: 5_000, description: 'Costume sur mesure', emoji: '🤵', tier: 'luxury' },
   { id: 'perfume-creed', name: 'Parfum Creed Aventus', category: 'fashion', price: 400, description: 'Le parfum des winners', emoji: '🧴', tier: 'budget' },
   { id: 'bag-goyard-xl', name: 'Goyard Artois MM', category: 'fashion', price: 3_200, description: 'Sac cabas Goyard', emoji: '👜', tier: 'mid' },
+  // Nouveaux items luxe
+  { id: 'jacket-canada', name: 'Canada Goose Expedition', category: 'fashion', price: 1_500, description: 'Parka grand froid premium', emoji: '🧥', tier: 'mid' },
+  { id: 'shoes-travis', name: 'Nike x Travis Scott', category: 'fashion', price: 5_000, description: 'Collab ultra-rare', emoji: '👟', tier: 'luxury' },
+  { id: 'bag-lv-trunk', name: 'Louis Vuitton Malle', category: 'fashion', price: 25_000, description: 'Malle de voyage sur mesure', emoji: '🧳', tier: 'luxury' },
+  { id: 'jacket-versace', name: 'Veste Versace Medusa', category: 'fashion', price: 3_500, description: 'Veste en soie imprimée', emoji: '🧥', tier: 'luxury' },
+  { id: 'shoes-lv-trainer', name: 'LV Trainer Virgil', category: 'fashion', price: 1_500, description: 'Sneakers Virgil Abloh', emoji: '👟', tier: 'mid' },
+  { id: 'suit-brioni', name: 'Costume Brioni', category: 'fashion', price: 8_000, description: 'Costume italien haute couture', emoji: '🤵', tier: 'luxury' },
+  { id: 'coat-burberry', name: 'Trench Burberry', category: 'fashion', price: 2_500, description: 'Trench-coat iconique', emoji: '🧥', tier: 'mid' },
+  { id: 'bag-chanel', name: 'Sac Chanel Classic', category: 'fashion', price: 9_000, description: 'Le sac matelassé légendaire', emoji: '👜', tier: 'luxury' },
+  { id: 'shoes-balenciaga', name: 'Balenciaga Triple S', category: 'fashion', price: 1_000, description: 'Sneakers chunky iconiques', emoji: '👟', tier: 'mid' },
+  { id: 'perfume-tom', name: 'Tom Ford Tobacco Vanille', category: 'fashion', price: 350, description: 'Parfum niche luxueux', emoji: '🧴', tier: 'budget' },
 ];
 
-export const ALL_ITEMS: ShopItem[] = [...ALL_HOUSES, ...ALL_CARS, ...ALL_JEWELRY, ...ALL_FASHION];
+// ─── Yachts ──────────────────────────────────────────────────────────────────
+
+export const ALL_YACHTS: ShopItem[] = [
+  { id: 'yacht-small', name: 'Yacht 12m', category: 'yacht', price: 500_000, description: 'Petit yacht de plaisance, 4 cabines', emoji: '🚤', tier: 'mid' },
+  { id: 'yacht-medium', name: 'Yacht 20m Sunseeker', category: 'yacht', price: 2_000_000, description: 'Yacht sportif, 6 cabines, jacuzzi', emoji: '🛥️', tier: 'luxury' },
+  { id: 'yacht-large', name: 'Yacht 30m Azimut', category: 'yacht', price: 5_000_000, description: 'Yacht de luxe, équipage inclus', emoji: '🛥️', tier: 'luxury' },
+  { id: 'yacht-mega', name: 'Méga Yacht 50m', category: 'yacht', price: 15_000_000, description: 'Méga yacht avec hélipad et piscine', emoji: '🛳️', tier: 'ultra' },
+  { id: 'yacht-super', name: 'Super Yacht 80m', category: 'yacht', price: 40_000_000, description: 'Super yacht, cinéma, spa, 20 cabines', emoji: '🛳️', tier: 'ultra' },
+  { id: 'yacht-giga', name: 'Giga Yacht 100m+', category: 'yacht', price: 80_000_000, description: 'Yacht de milliardaire, sous-marin inclus', emoji: '🛳️', tier: 'ultra' },
+];
+
+// ─── Jets Privés ─────────────────────────────────────────────────────────────
+
+export const ALL_JETS: ShopItem[] = [
+  { id: 'jet-prop', name: 'Turboprop King Air', category: 'jet', price: 3_000_000, description: 'Avion à hélices, 8 places, 2000km', emoji: '🛩️', tier: 'mid' },
+  { id: 'jet-light', name: 'Citation CJ3+', category: 'jet', price: 8_000_000, description: 'Jet léger, 9 places, 3500km', emoji: '✈️', tier: 'luxury' },
+  { id: 'jet-mid', name: 'Challenger 350', category: 'jet', price: 15_000_000, description: 'Jet moyen, 10 places, 5500km', emoji: '✈️', tier: 'luxury' },
+  { id: 'jet-large', name: 'Gulfstream G650', category: 'jet', price: 35_000_000, description: 'Jet long-courrier, 16 places, 12000km', emoji: '✈️', tier: 'ultra' },
+  { id: 'jet-bbj', name: 'Boeing BBJ 737', category: 'jet', price: 70_000_000, description: 'Boeing privé, suite présidentielle', emoji: '✈️', tier: 'ultra' },
+  { id: 'jet-a380', name: 'Airbus ACJ330', category: 'jet', price: 100_000_000, description: 'Airbus privé, palace volant', emoji: '✈️', tier: 'ultra' },
+];
+
+export const ALL_ITEMS: ShopItem[] = [...ALL_HOUSES, ...ALL_CARS, ...ALL_JEWELRY, ...ALL_FASHION, ...ALL_YACHTS, ...ALL_JETS];
 
 /**
  * Generates a weekly shop selection (random subset of items).
@@ -144,6 +177,8 @@ export function generateWeeklyShop(seed: number): ShopItem[] {
   const cars = shuffle(ALL_CARS).slice(0, 4 + Math.floor(rand() * 2));
   const jewelry = shuffle(ALL_JEWELRY).slice(0, 4 + Math.floor(rand() * 2));
   const fashion = shuffle(ALL_FASHION).slice(0, 4 + Math.floor(rand() * 3));
+  const yachts = shuffle(ALL_YACHTS).slice(0, 2 + Math.floor(rand() * 2));
+  const jets = shuffle(ALL_JETS).slice(0, 2 + Math.floor(rand() * 2));
 
-  return [...houses, ...cars, ...jewelry, ...fashion];
+  return [...houses, ...cars, ...jewelry, ...fashion, ...yachts, ...jets];
 }

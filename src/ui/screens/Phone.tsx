@@ -209,7 +209,7 @@ function ChatView({ contact, onBack }: { contact: Contact; onBack: () => void })
 
   const getRelationInfo = () => {
     if (contact === 'coach') return `Relation : ${social.coachRelation}/100${isCaptain ? ' • ©️ Capitaine' : ''}`;
-    if (contact === 'locker') return `Moral équipe : ${social.teamMorale ?? 50}/100${isCaptain ? ' • ©️ Capitaine' : ''}`;
+    if (contact === 'locker') return `Ambiance : ${social.teamAmbiance ?? 50}/100${isCaptain ? ' • ©️ Capitaine' : ''}`;
     return '';
   };
 
@@ -253,8 +253,8 @@ function ChatView({ contact, onBack }: { contact: Contact; onBack: () => void })
               const newVal = Math.max(0, Math.min(100, gs.social.coachRelation + msg.effect));
               useGameStore.setState({ gameState: { ...gs, social: { ...gs.social, coachRelation: newVal } } });
             } else if (msg.effectType === 'teamMorale') {
-              const newVal = Math.max(0, Math.min(100, (gs.social.teamMorale ?? 50) + msg.effect));
-              useGameStore.setState({ gameState: { ...gs, social: { ...gs.social, teamMorale: newVal } } });
+              const newVal = Math.max(0, Math.min(100, (gs.social.teamAmbiance ?? 50) + msg.effect));
+              useGameStore.setState({ gameState: { ...gs, social: { ...gs.social, teamAmbiance: newVal } } });
             }
           }
         }

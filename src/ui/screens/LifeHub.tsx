@@ -138,8 +138,8 @@ function ShopView() {
     setTimeout(() => setMessage(null), 4000);
   };
 
-  const categoryOrder: ShopItem['category'][] = ['house', 'car', 'jewelry', 'fashion'];
-  const categoryLabels: Record<string, string> = { house: '🏠 Immobilier', car: '🚗 Voitures', jewelry: '💎 Bijoux & Montres', fashion: '👜 Mode & Luxe' };
+  const categoryOrder: ShopItem['category'][] = ['house', 'car', 'jewelry', 'fashion', 'yacht', 'jet'];
+  const categoryLabels: Record<string, string> = { house: '🏠 Immobilier', car: '🚗 Voitures', jewelry: '💎 Bijoux & Montres', fashion: '👜 Mode & Luxe', yacht: '🛥️ Yachts', jet: '✈️ Jets Privés' };
 
   // Wellness: 1 fitness + 1 morale purchase per week (checked inside handler)
 
@@ -298,6 +298,8 @@ function PossessionsView() {
   const cars = possessions.filter((p) => p.category === 'car');
   const jewelry = possessions.filter((p) => p.category === 'jewelry');
   const fashion = possessions.filter((p) => p.category === 'fashion');
+  const yachts = possessions.filter((p) => p.category === 'yacht');
+  const jets = possessions.filter((p) => p.category === 'jet');
 
   const totalValue = possessions.reduce((sum, p) => sum + getCurrentValue(p, currentDate), 0);
 
@@ -351,6 +353,8 @@ function PossessionsView() {
       {cars.length > 0 && <PossessionSection title="🚗 Voitures" items={cars} currentDate={currentDate} onSell={handleSell} />}
       {jewelry.length > 0 && <PossessionSection title="💎 Bijoux & Montres" items={jewelry} currentDate={currentDate} onSell={handleSell} />}
       {fashion.length > 0 && <PossessionSection title="👜 Mode & Luxe" items={fashion} currentDate={currentDate} onSell={handleSell} />}
+      {yachts.length > 0 && <PossessionSection title="🛥️ Yachts" items={yachts} currentDate={currentDate} onSell={handleSell} />}
+      {jets.length > 0 && <PossessionSection title="✈️ Jets Privés" items={jets} currentDate={currentDate} onSell={handleSell} />}
     </div>
   );
 }

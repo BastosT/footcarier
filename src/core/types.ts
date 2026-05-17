@@ -175,7 +175,8 @@ export interface SocialState {
   reputation: number;        // 0-100
   coachRelation: number;     // 0-100
   teamRelation: number;      // 0-100
-  teamMorale: number;        // 0-100
+  teamMorale: number;        // 0-100 — dépend des résultats (victoires/défaites)
+  teamAmbiance: number;      // 0-100 — dépend des interactions (messages vestiaire)
   socialFeed: SocialPost[];
   pendingInterviews: Interview[];
 }
@@ -456,7 +457,7 @@ export interface SeasonHistoryEntry {
 export interface OwnedItem {
   id: string;
   name: string;
-  category: 'house' | 'car' | 'jewelry' | 'fashion';
+  category: 'house' | 'car' | 'jewelry' | 'fashion' | 'yacht' | 'jet';
   price: number;
   emoji: string;
   purchasedDate: GameDate;
