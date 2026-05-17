@@ -59,6 +59,10 @@ interface MatchPlayState {
   isPlayerHome: boolean;
   /** Brief goal celebration animation */
   goalAnimation: 'player' | 'opponent' | null;
+  /** Player starts on bench (enters at ~60') if coachRelation < 40 */
+  startsOnBench: boolean;
+  /** Minute the player enters the match (0 if starting) */
+  entryMinute: number;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -81,14 +85,20 @@ export function MatchPlay() {
     const rng = rngRef.current;
     const player = gameState.player;
     const teamMorale = gameState.social.teamMorale ?? 50;
+    const coachRelation = gameState.social.coachRelation ?? 50;
 
-    // More actions: 6-10 per match, spread randomly
-    const numActions = rng.randomInt(6, 10);
-    const totalFitnessLoss = rng.randomInt(MATCH_FITNESS_LOSS.min, MATCH_FITNESS_LOSS.max);
+    // Determine if player starts on bench (coachRelation < 40)
+    const startsOnBench = coachRelation < 40;
+    const entryMinute = startsOnBench ? 55 + rng.randomInt(0, 10) : 0; // enters between 55'-65'
+
+    // Fewer actions if coming off the bench (only ~30 min to play)
+    const numActions = startsOnBench ? rng.randomInt(3, 5) : rng.randomInt(6, 10);
+    const totalFitnessLoss = startsOnBench
+      ? rng.randomInt(Math.round(MATCH_FITNESS_LOSS.min * 0.4), Math.round(MATCH_FITNESS_LOSS.max * 0.4))
+      : rng.randomInt(MATCH_FITNESS_LOSS.min, MATCH_FITNESS_LOSS.max);
 
     // Morale boosts effective fitness for action probability calculation
-    // High morale (80+) = +5 effective fitness, Low morale (20-) = -5
-    const moraleBoost = (teamMorale - 50) / 10; // range: -5 to +5
+    const moraleBoost = (teamMorale - 50) / 10;
     const effectiveFitness = Math.min(100, Math.max(0, player.fitness + moraleBoost));
 
     const actions = generateInteractiveActions(
@@ -138,6 +148,14 @@ export function MatchPlay() {
     }
     opponentGoalMinutes.sort((a, b) => a - b);
 
+    // If starting on bench, shift action minutes to after entry
+    if (startsOnBench) {
+      const availableMinutes = 90 - entryMinute;
+      actions.forEach((action, i) => {
+        action.minute = entryMinute + Math.round(((i + 1) / (actions.length + 1)) * availableMinutes);
+      });
+    }
+
     setMatchState({
       minute: 0,
       homeGoals: 0,
@@ -146,7 +164,7 @@ export function MatchPlay() {
       actions,
       results: [],
       currentActionIndex: 0,
-      isPaused: false,
+      isPaused: startsOnBench, // pause at start to show bench message
       isFinished: false,
       isHalftime: false,
       isSubstituted: false,
@@ -154,6 +172,8 @@ export function MatchPlay() {
       opponentGoalsScored: 0,
       isPlayerHome,
       goalAnimation: null,
+      startsOnBench,
+      entryMinute,
     });
   }, [gameState]);
 
@@ -337,11 +357,12 @@ export function MatchPlay() {
       playerDribbles,
       playerTackles,
       playerPassAccuracy: passAccuracy,
-      minutesPlayed: Math.floor(matchState.minute),
+      minutesPlayed: matchState.startsOnBench
+        ? Math.max(0, Math.floor(matchState.minute) - matchState.entryMinute)
+        : Math.floor(matchState.minute),
     };
 
     useGameStore.getState().setLastMatchSummary(matchSummary);
-    updateCareerStatsFromMatch(matchSummary);
 
     // Map interactive action choices to PlayerInput timing
     const playerInputs = matchState.results.map((r) => ({
@@ -364,6 +385,9 @@ export function MatchPlay() {
         },
       });
     }
+
+    // Update career stats AFTER playMatch so we read the fresh state
+    updateCareerStatsFromMatch(matchSummary);
 
     goToScreen('post-match');
   }, [matchState, gameState, pendingMatchConfig, playMatch, setPendingMatchConfig, goToScreen]);
@@ -445,7 +469,33 @@ export function MatchPlay() {
 
       {/* Main content area */}
       <div className="flex-1 flex flex-col items-center justify-center p-4">
-        {matchState.goalAnimation ? (
+        {matchState.startsOnBench && matchState.minute < matchState.entryMinute && matchState.isPaused ? (
+          /* Bench state — waiting to enter */
+          <div className="text-center">
+            <p className="text-5xl mb-4">🪑</p>
+            <p className="text-2xl font-bold text-text mb-2">Sur le banc</p>
+            <p className="text-text-muted text-sm mb-2">
+              Le coach ne te fait pas confiance (relation : {gameState.social.coachRelation}/100)
+            </p>
+            <p className="text-text-muted text-sm mb-6">
+              Tu entres à la <span className="text-primary-light font-bold">{matchState.entryMinute}'</span>
+            </p>
+            <button
+              onClick={() => setMatchState((prev) => prev ? {
+                ...prev,
+                minute: prev.entryMinute,
+                isPaused: false,
+                // Simulate opponent goals that happened before entry
+                homeGoals: prev.opponentGoalMinutes.filter((m) => m < prev.entryMinute && !prev.isPlayerHome).length,
+                awayGoals: prev.opponentGoalMinutes.filter((m) => m < prev.entryMinute && prev.isPlayerHome).length,
+                opponentGoalsScored: prev.opponentGoalMinutes.filter((m) => m < prev.entryMinute).length,
+              } : prev)}
+              className="py-3 px-8 bg-primary text-white font-semibold rounded-xl active:scale-95 transition-all"
+            >
+              Avancer à la {matchState.entryMinute}' →
+            </button>
+          </div>
+        ) : matchState.goalAnimation ? (
           /* Goal celebration popup */
           <div className="text-center">
             <p className="text-5xl mb-4">

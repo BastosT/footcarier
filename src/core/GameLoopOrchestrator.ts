@@ -36,6 +36,8 @@ import { SocialFeedGenerator } from '../systems/social/SocialFeedGenerator';
 import { TransferSystem } from '../systems/transfer/TransferSystem';
 import { InjurySystem } from '../systems/injury/InjurySystem';
 import { simulateMatchday } from '../systems/league/LeagueEngine';
+import { StandingsCalculator } from '../systems/league/StandingsCalculator';
+import { accumulateGoals, type MatchGoalEvent } from '../systems/league/TopScorers';
 import { FitnessManager } from '../systems/match/FitnessManager';
 import { TrainingManager } from '../systems/training/TrainingManager';
 import { MatchSimulator } from '../systems/match/MatchSimulator';
@@ -228,22 +230,30 @@ function generateQuickPerformance(
   fitness: number,
   rng: RNG,
   teamWon?: boolean,
-  teamDrew?: boolean
+  teamDrew?: boolean,
+  startsOnBench?: boolean
 ): MatchPerformance {
-  // Base rating depends on match result
+  const minutesPlayed = startsOnBench ? rng.randomInt(25, 35) : 90;
+
+  // Base rating depends on match result (lower if bench)
   let baseRating: number;
   if (teamWon) baseRating = 6.5 + rng.randomFloat(0, 1.5);
   else if (teamDrew) baseRating = 5.8 + rng.randomFloat(0, 1.2);
   else baseRating = 4.5 + rng.randomFloat(0, 1.5);
 
-  // Generate goals/assists based on rating
-  const goalChance = (overallRating / 100) * (fitness / 100) * 0.3;
-  const assistChance = (overallRating / 100) * 0.2;
+  // Bench penalty: less time = lower chance to impact
+  const minutesFactor = minutesPlayed / 90;
+
+  // Generate goals/assists based on rating (reduced if bench)
+  const goalChance = (overallRating / 100) * (fitness / 100) * 0.3 * minutesFactor;
+  const assistChance = (overallRating / 100) * 0.2 * minutesFactor;
   const goals = rng.random() < goalChance ? (rng.random() < 0.3 ? 2 : 1) : 0;
   const assists = rng.random() < assistChance ? 1 : 0;
 
   // Adjust rating based on goals/assists
   baseRating += goals * 1.0 + assists * 0.5;
+  // Slight penalty for bench (less time to prove yourself)
+  if (startsOnBench) baseRating -= 0.3;
 
   const rating = clamp(Math.round(baseRating * 10) / 10, 3, 10);
 
@@ -251,11 +261,11 @@ function generateQuickPerformance(
     rating,
     goals,
     assists,
-    minutesPlayed: 90,
-    shots: rng.randomInt(1, 5),
+    minutesPlayed,
+    shots: rng.randomInt(startsOnBench ? 0 : 1, startsOnBench ? 2 : 5),
     passAccuracy: rng.randomInt(65, 92),
-    dribbles: rng.randomInt(0, 4),
-    tackles: rng.randomInt(0, 3),
+    dribbles: rng.randomInt(0, startsOnBench ? 2 : 4),
+    tackles: rng.randomInt(0, startsOnBench ? 1 : 3),
   };
 }
 
@@ -363,6 +373,28 @@ function buildClubsLookup(state: GameState): Map<string, Club> {
   // Override with the player's current club (has the player in squad)
   lookup.set(state.career.currentClub.id, state.career.currentClub);
   return lookup;
+}
+
+/**
+ * Recalculates standings from all results for a league.
+ * Uses the league's existing standings as the source of club names.
+ */
+function recalculateLeagueStandings(
+  allResults: import('./types').MatchResult[],
+  league: import('./types').LeagueState
+): import('./types').LeagueStanding[] {
+  const clubs: Club[] = league.standings.map((s) => ({
+    id: s.clubId,
+    name: s.clubName,
+    country: league.division.country,
+    division: league.division,
+    tier: 'medium' as const,
+    squad: [],
+    finances: { budget: 0, wageBill: 0 },
+    stadium: '',
+    colors: { primary: '#000', secondary: '#fff' },
+  }));
+  return StandingsCalculator.calculateFromResults(allResults, clubs);
 }
 
 // ─── Core Implementation ─────────────────────────────────────────────────────
@@ -644,20 +676,37 @@ export function playMatch(
     if (isPlayerLeague) {
       // Add the player's match result + other results
       const allNewResults = [...matchdayResult.results, matchResult];
+      const allLeagueResults = [...league.results, ...allNewResults];
+      const recalcStandings = recalculateLeagueStandings(allLeagueResults, league);
+      // Add player's goals/assists to top scorers
+      const playerGoalEvents: MatchGoalEvent[] = [];
+      if (matchResult.playerPerformance && (matchResult.playerPerformance.goals > 0 || matchResult.playerPerformance.assists > 0)) {
+        playerGoalEvents.push({
+          playerId: state.player.id,
+          playerName: `${state.player.firstName} ${state.player.lastName}`,
+          clubId: state.career.currentClub.id,
+          clubName: state.career.currentClub.name,
+          goals: matchResult.playerPerformance.goals,
+          assists: matchResult.playerPerformance.assists,
+        });
+      }
+      const topScorersWithPlayer = accumulateGoals(matchdayResult.updatedTopScorers, playerGoalEvents);
       standingsUpdated = true;
       topScorersUpdated = true;
       return {
         ...league,
-        results: [...league.results, ...allNewResults],
-        standings: matchdayResult.updatedStandings,
-        topScorers: matchdayResult.updatedTopScorers,
+        results: allLeagueResults,
+        standings: recalcStandings,
+        topScorers: topScorersWithPlayer,
       };
     } else {
       // Other leagues: just add the simulated results
+      const allLeagueResults = [...league.results, ...matchdayResult.results];
+      const recalcStandings = recalculateLeagueStandings(allLeagueResults, league);
       return {
         ...league,
-        results: [...league.results, ...matchdayResult.results],
-        standings: matchdayResult.updatedStandings,
+        results: allLeagueResults,
+        standings: recalcStandings,
         topScorers: matchdayResult.updatedTopScorers,
       };
     }
@@ -757,12 +806,17 @@ export function simulateMatch(
   const teamWinning = playerTeamBaseGoals > opponentBaseGoals;
   const teamDrawing = playerTeamBaseGoals === opponentBaseGoals;
 
+  // Check if player starts on bench (coachRelation < 40)
+  const coachRelation = state.social.coachRelation ?? 50;
+  const startsOnBench = coachRelation < 40;
+
   const performance = generateQuickPerformance(
     state.player.overallRating,
     state.player.fitness,
     rng,
     teamWinning,
-    teamDrawing
+    teamDrawing,
+    startsOnBench
   );
 
   // Adjust goals based on player performance
@@ -821,20 +875,37 @@ export function simulateMatch(
     if (isPlayerLeague) {
       // Add the player's match result + other results
       const allNewResults = [...matchdayResult.results, matchResult];
+      const allLeagueResults = [...league.results, ...allNewResults];
+      const recalcStandings = recalculateLeagueStandings(allLeagueResults, league);
+      // Add player's goals/assists to top scorers
+      const playerGoalEvents: MatchGoalEvent[] = [];
+      if (matchResult.playerPerformance && (matchResult.playerPerformance.goals > 0 || matchResult.playerPerformance.assists > 0)) {
+        playerGoalEvents.push({
+          playerId: state.player.id,
+          playerName: `${state.player.firstName} ${state.player.lastName}`,
+          clubId: state.career.currentClub.id,
+          clubName: state.career.currentClub.name,
+          goals: matchResult.playerPerformance.goals,
+          assists: matchResult.playerPerformance.assists,
+        });
+      }
+      const topScorersWithPlayer = accumulateGoals(matchdayResult.updatedTopScorers, playerGoalEvents);
       standingsUpdated = true;
       topScorersUpdated = true;
       return {
         ...league,
-        results: [...league.results, ...allNewResults],
-        standings: matchdayResult.updatedStandings,
-        topScorers: matchdayResult.updatedTopScorers,
+        results: allLeagueResults,
+        standings: recalcStandings,
+        topScorers: topScorersWithPlayer,
       };
     } else {
       // Other leagues: just add the simulated results
+      const allLeagueResults = [...league.results, ...matchdayResult.results];
+      const recalcStandings = recalculateLeagueStandings(allLeagueResults, league);
       return {
         ...league,
-        results: [...league.results, ...matchdayResult.results],
-        standings: matchdayResult.updatedStandings,
+        results: allLeagueResults,
+        standings: recalcStandings,
         topScorers: matchdayResult.updatedTopScorers,
       };
     }

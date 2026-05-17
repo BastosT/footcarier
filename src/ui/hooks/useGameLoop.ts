@@ -160,6 +160,28 @@ export function useGameLoop(): UseGameLoopReturn {
     // Reset monthly rest counter on the 1st of the month
     if (currentGameState.time.currentDate.day <= 7) {
       useGameStore.setState({ restEventsThisMonth: 0 });
+
+      // Monthly investment value update (if we crossed the 1st during this week)
+      const latestState = useGameStore.getState();
+      if (latestState.gameState && latestState.gameState.lifestyle.investments.length > 0) {
+        const updatedInvestments = latestState.gameState.lifestyle.investments.map((inv) => {
+          let change: number;
+          if (inv.risk === 'safe') {
+            change = inv.currentValue * (inv.monthlyReturn / 100) * (0.7 + Math.random() * 0.6);
+          } else if (inv.risk === 'medium') {
+            const direction = Math.random() < 0.6 ? 1 : -1;
+            change = inv.currentValue * (inv.monthlyReturn / 100) * direction * (0.5 + Math.random());
+          } else {
+            const direction = Math.random() < 0.55 ? 1 : -1;
+            change = inv.currentValue * (inv.monthlyReturn / 100) * direction * (0.5 + Math.random() * 1.5);
+          }
+          return { ...inv, currentValue: Math.max(inv.investedAmount * 0.3, Math.round(inv.currentValue + change)) };
+        });
+
+        useGameStore.setState({
+          gameState: { ...latestState.gameState, lifestyle: { ...latestState.gameState.lifestyle, investments: updatedInvestments } },
+        });
+      }
     }
 
     // Reset training if we passed a Monday

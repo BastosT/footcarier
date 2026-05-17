@@ -17,63 +17,98 @@ import { useNavigation } from '../hooks/useNavigation';
 import { useGameStore } from '../../store/gameStore';
 import type { InterviewAnswer, InterviewQuestion } from '../../core/types';
 
-/** Post-match interview questions generated contextually */
+/** Post-match interview questions generated contextually based on match result */
 function generatePostMatchQuestions(
   won: boolean,
+  draw: boolean,
   goals: number,
   rating: number
 ): InterviewQuestion[] {
   if (won) {
-    return [
-      {
-        text: goals > 0
-          ? 'Vous avez marqué et remporté le match. Comment vous sentez-vous ?'
-          : 'Belle victoire pour votre équipe. Quel est votre sentiment ?',
-        answers: [
-          {
-            text: "C'est un travail d'équipe, on a tous donné le meilleur.",
-            tone: 'humble',
-            impacts: { popularity: 2, reputation: 1, coachRelation: 3, teamRelation: 3 },
-          },
-          {
-            text: "Je suis en grande forme, je sens que rien ne peut m'arrêter.",
-            tone: 'confident',
-            impacts: { popularity: 3, reputation: 2, coachRelation: 0, teamRelation: -1 },
-          },
-          {
-            text: "L'adversaire était faible, on méritait mieux comme opposition.",
-            tone: 'controversial',
-            impacts: { popularity: -2, reputation: -1, coachRelation: -2, teamRelation: -1 },
-          },
-        ],
-      },
-    ];
-  }
+    const question = goals >= 2
+      ? 'Doublé et victoire ! Vous êtes en feu. Comment expliquez-vous cette forme ?'
+      : goals === 1
+        ? 'Buteur et victorieux ce soir. Quel est votre sentiment ?'
+        : 'Belle victoire collective. Comment jugez-vous la prestation de l\'équipe ?';
 
-  return [
-    {
-      text: rating < 5
-        ? 'Match difficile pour vous ce soir. Comment expliquez-vous cette performance ?'
-        : 'Défaite malgré vos efforts. Que retenez-vous de ce match ?',
+    return [{
+      text: question,
       answers: [
         {
-          text: "On doit travailler plus dur à l'entraînement. On reviendra plus forts.",
+          text: "C'est un travail d'équipe avant tout. On a tous donné le meilleur de nous-mêmes.",
           tone: 'humble',
-          impacts: { popularity: 1, reputation: 2, coachRelation: 3, teamRelation: 2 },
+          impacts: { popularity: 2, reputation: 2, coachRelation: 3, teamRelation: 4 },
         },
         {
-          text: "Je sais ce que je vaux, ce n'est qu'un mauvais jour.",
+          text: "Je suis en grande forme en ce moment, je sens que rien ne peut m'arrêter !",
           tone: 'confident',
-          impacts: { popularity: 1, reputation: 1, coachRelation: -1, teamRelation: 0 },
+          impacts: { popularity: 4, reputation: 2, coachRelation: 0, teamRelation: -2 },
         },
         {
-          text: "Certains coéquipiers n'étaient pas au niveau ce soir.",
+          text: "Honnêtement, l'adversaire n'était pas au niveau. On mérite mieux comme opposition.",
           tone: 'controversial',
-          impacts: { popularity: -3, reputation: -2, coachRelation: -1, teamRelation: -4 },
+          impacts: { popularity: -2, reputation: -2, coachRelation: -2, teamRelation: -1 },
         },
       ],
-    },
-  ];
+    }];
+  }
+
+  if (draw) {
+    const question = goals > 0
+      ? 'Match nul malgré votre but. Frustrant ou satisfaisant ?'
+      : rating >= 7
+        ? 'Match nul ce soir. Vous avez pourtant bien joué. Un regret ?'
+        : 'Partage des points. L\'équipe peut-elle faire mieux ?';
+
+    return [{
+      text: question,
+      answers: [
+        {
+          text: "Un point c'est toujours bon à prendre. On continue à travailler.",
+          tone: 'humble',
+          impacts: { popularity: 1, reputation: 2, coachRelation: 2, teamRelation: 2 },
+        },
+        {
+          text: "On aurait dû gagner. Je suis frustré, on méritait les 3 points.",
+          tone: 'confident',
+          impacts: { popularity: 2, reputation: 1, coachRelation: 0, teamRelation: 1 },
+        },
+        {
+          text: "Avec un meilleur arbitrage, on gagnait ce match. C'est scandaleux.",
+          tone: 'controversial',
+          impacts: { popularity: -1, reputation: -3, coachRelation: -2, teamRelation: 0 },
+        },
+      ],
+    }];
+  }
+
+  // Loss
+  const question = rating < 5
+    ? 'Soirée difficile pour vous et l\'équipe. Comment rebondir ?'
+    : goals > 0
+      ? 'Défaite malgré votre but. Que manque-t-il à cette équipe ?'
+      : 'Défaite ce soir. Que retenez-vous de ce match ?';
+
+  return [{
+    text: question,
+    answers: [
+      {
+        text: "On doit travailler plus dur à l'entraînement. On reviendra plus forts.",
+        tone: 'humble',
+        impacts: { popularity: 1, reputation: 2, coachRelation: 3, teamRelation: 3 },
+      },
+      {
+        text: "Je sais ce que je vaux. Ce n'est qu'un mauvais jour, ça arrive.",
+        tone: 'confident',
+        impacts: { popularity: 1, reputation: 1, coachRelation: -1, teamRelation: 0 },
+      },
+      {
+        text: "Certains coéquipiers n'étaient pas au niveau ce soir. Il faut le dire.",
+        tone: 'controversial',
+        impacts: { popularity: -3, reputation: -2, coachRelation: -1, teamRelation: -5 },
+      },
+    ],
+  }];
 }
 
 export function PostMatch() {
@@ -149,7 +184,7 @@ export function PostMatch() {
   const resultColor = won ? 'text-secondary' : draw ? 'text-accent' : 'text-danger';
 
   // Generate interview questions
-  const interviewQuestions = generatePostMatchQuestions(won, performance.goals, performance.rating);
+  const interviewQuestions = generatePostMatchQuestions(won, draw, performance.goals, performance.rating);
 
   /** Handle interview answer selection */
   function handleInterviewAnswer(answer: InterviewAnswer) {

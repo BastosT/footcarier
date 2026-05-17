@@ -7,12 +7,16 @@
  * Validates: Requirements 12.1, 12.2, 12.3, 12.4, 12.5
  */
 
+import { useState } from 'react';
 import { Avatar } from '../components/Avatar';
 import { FitnessBar } from '../components/FitnessBar';
 import { StandingsTable } from '../components/StandingsTable';
 import { useGameLoop } from '../hooks/useGameLoop';
 import { useGameStore } from '../../store/gameStore';
 import { formatGameDate, getWeekdayName } from '../../utils/formatters';
+import { simulateMatch as simMatchOrchestrator } from '../../core/GameLoopOrchestrator';
+import { generateBallonDorRanking } from '../../systems/career/BallonDor';
+import { createRNG } from '../../utils/random';
 import type { PlayerCharacter, LeagueStanding, ScheduledMatch, GameDate } from '../../core/types';
 
 export interface MainScreenProps {
@@ -162,6 +166,9 @@ export function MainScreen({
           />
         </div>
       </section>
+
+      {/* Ballon d'Or race widget */}
+      <BallonDorWidget />
     </div>
   );
 }
@@ -248,7 +255,29 @@ export function MainScreenConnected() {
     );
   }
 
+  const [injuryAlert, setInjuryAlert] = useState<string | null>(null);
+
   const { player, career, time, leagues } = gameState;
+  const isInjured = player.injury !== null && player.injury.weeksRemaining > 0;
+
+  // Show injury alert popup
+  if (injuryAlert) {
+    return (
+      <div className="min-h-dvh flex flex-col items-center justify-center bg-background p-6">
+        <div className="bg-surface rounded-2xl p-6 max-w-sm w-full text-center">
+          <p className="text-4xl mb-4">🏥</p>
+          <h2 className="text-xl font-bold text-red-400 mb-2">Blessure !</h2>
+          <p className="text-text-muted text-sm mb-6">{injuryAlert}</p>
+          <button
+            onClick={() => setInjuryAlert(null)}
+            className="w-full py-3 px-6 bg-primary text-white font-semibold rounded-xl active:scale-95 transition-all"
+          >
+            OK
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Get standings for the player's championship
   const playerLeague = leagues.find(
@@ -311,6 +340,22 @@ export function MainScreenConnected() {
   };
 
   const handleMatchDay = () => {
+    if (isInjured) {
+      // Player is injured — auto-simulate the match without them
+      buildMatchConfig();
+      const config = useGameStore.getState().ui.pendingMatchConfig;
+      if (config) {
+        const state = useGameStore.getState();
+        if (state.gameState) {
+          const rng = createRNG(Date.now());
+          const { newState } = simMatchOrchestrator(state.gameState, config, rng);
+          useGameStore.setState({ gameState: newState });
+          setPendingMatchConfig(null);
+        }
+      }
+      setInjuryAlert(`Tu es blessé (${getInjuryTypeName(player.injury!.type)}) et ne peux pas jouer. Le match a été simulé sans toi.`);
+      return;
+    }
     buildMatchConfig();
     setCurrentScreen('match-choice');
   };
@@ -321,9 +366,31 @@ export function MainScreenConnected() {
       return;
     }
     const result = advanceDay();
-    if (result && result.isMatchDay && result.matchConfig) {
-      setPendingMatchConfig(result.matchConfig);
-      setCurrentScreen('match-choice');
+    if (result) {
+      // Check if injury occurred during this day
+      if (result.injuryOccurred) {
+        const freshState = useGameStore.getState().gameState;
+        if (freshState?.player.injury) {
+          setInjuryAlert(
+            `Tu t'es blessé ! ${getInjuryTypeName(freshState.player.injury.type)} (${freshState.player.injury.severity === 'minor' ? 'légère' : freshState.player.injury.severity === 'moderate' ? 'modérée' : 'grave'}) — ${freshState.player.injury.weeksRemaining} semaine(s) d'absence.`
+          );
+        }
+        return;
+      }
+      if (result.isMatchDay && result.matchConfig) {
+        // Check if injured before going to match
+        const freshState = useGameStore.getState().gameState;
+        if (freshState?.player.injury && freshState.player.injury.weeksRemaining > 0) {
+          // Auto-simulate
+          const rng = createRNG(Date.now());
+          const { newState } = simMatchOrchestrator(freshState, result.matchConfig, rng);
+          useGameStore.setState({ gameState: newState });
+          setInjuryAlert(`Jour de match mais tu es blessé. Le match a été simulé sans toi.`);
+          return;
+        }
+        setPendingMatchConfig(result.matchConfig);
+        setCurrentScreen('match-choice');
+      }
     }
   };
 
@@ -355,4 +422,74 @@ function getWeekday(date: GameDate): number {
   const jsDate = new Date(date.year, date.month - 1, date.day);
   const jsDay = jsDate.getDay();
   return jsDay === 0 ? 6 : jsDay - 1;
+}
+
+function getInjuryTypeName(type: string): string {
+  switch (type) {
+    case 'muscle': return 'blessure musculaire';
+    case 'ligament': return 'blessure ligamentaire';
+    case 'fracture': return 'fracture';
+    case 'concussion': return 'commotion';
+    case 'fatigue': return 'fatigue intense';
+    default: return 'blessure';
+  }
+}
+
+// ─── Ballon d'Or Widget ──────────────────────────────────────────────────────
+
+function BallonDorWidget() {
+  const gameState = useGameStore((s) => s.gameState);
+  if (!gameState) return null;
+
+  const rng = createRNG(gameState.career.season * 1000 + gameState.time.currentDate.month);
+  const ranking = generateBallonDorRanking(gameState, rng);
+
+  const playerInRanking = ranking.find((c) => c.isPlayer);
+  const playerPosition = playerInRanking ? ranking.indexOf(playerInRanking) + 1 : null;
+  const top5 = ranking.slice(0, 5);
+
+  return (
+    <section className="px-4 pb-6">
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-sm font-bold text-text">🏆 Course au Ballon d'Or</h2>
+        <p className="text-xs text-text-muted">Saison {gameState.career.season}</p>
+      </div>
+      <div className="bg-surface rounded-2xl p-3 border border-surface-light">
+        {/* Player position line */}
+        {playerPosition && playerPosition <= 30 ? (
+          <div className={`rounded-lg px-3 py-1.5 mb-2 ${playerPosition <= 3 ? 'bg-yellow-500/10 border border-yellow-500/30' : 'bg-primary/10 border border-primary/30'}`}>
+            <p className="text-xs">
+              <span className="font-bold text-primary-light">Toi : {playerPosition}e</span>
+              <span className="text-text-muted"> — {playerInRanking!.goals}⚽ {playerInRanking!.assists}🎯 (note {playerInRanking!.rating})</span>
+            </p>
+          </div>
+        ) : (
+          <div className="rounded-lg px-3 py-1.5 mb-2 bg-surface-light">
+            <p className="text-xs text-text-muted">Tu n'es pas dans le top 30 — continue à performer !</p>
+          </div>
+        )}
+
+        {/* Top 5 */}
+        <div className="space-y-1">
+          {top5.map((candidate, idx) => (
+            <div
+              key={candidate.id}
+              className={`flex items-center justify-between py-1 px-2 rounded ${candidate.isPlayer ? 'bg-primary/15' : ''}`}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-text-muted w-4">
+                  {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}.`}
+                </span>
+                <span className="text-xs">{candidate.country}</span>
+                <span className={`text-xs ${candidate.isPlayer ? 'text-primary-light font-bold' : 'text-text'}`}>
+                  {candidate.name}
+                </span>
+              </div>
+              <span className="text-[10px] text-text-muted">{candidate.goals}⚽ {candidate.assists}🎯</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
 }

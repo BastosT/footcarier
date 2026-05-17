@@ -642,7 +642,11 @@ function FinanceView() {
 
   const { finance, career, lifestyle } = gameState;
   const totalPossessionsValue = lifestyle.possessions.reduce((sum, p) => sum + p.price, 0);
-  const netWorth = finance.balance + totalPossessionsValue;
+  const investments = lifestyle.investments ?? [];
+  const totalInvestmentsValue = investments.reduce((sum, inv) => sum + inv.currentValue, 0);
+  const totalInvested = investments.reduce((sum, inv) => sum + inv.investedAmount, 0);
+  const investmentProfit = totalInvestmentsValue - totalInvested;
+  const netWorth = finance.balance + totalPossessionsValue + totalInvestmentsValue;
 
   return (
     <div className="flex-1 overflow-y-auto px-4 py-4 pb-20">
@@ -665,8 +669,59 @@ function FinanceView() {
           <p className="text-lg font-bold text-text">{formatCurrency(totalPossessionsValue)}</p>
         </div>
         <div className="bg-surface rounded-xl p-3 text-center">
-          <p className="text-xs text-text-muted">Objets</p>
-          <p className="text-lg font-bold text-text">{lifestyle.possessions.length}</p>
+          <p className="text-xs text-text-muted">Investissements</p>
+          <p className="text-lg font-bold text-text">{formatCurrency(totalInvestmentsValue)}</p>
+        </div>
+      </div>
+
+      {/* Investment details */}
+      {investments.length > 0 && (
+        <div className="bg-surface rounded-xl p-4 mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-bold text-text">📈 Investissements</h3>
+            <span className={`text-xs font-bold ${investmentProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+              {investmentProfit >= 0 ? '+' : ''}{formatCurrency(investmentProfit)}
+            </span>
+          </div>
+          <div className="space-y-2">
+            {investments.map((inv) => {
+              const profit = inv.currentValue - inv.investedAmount;
+              const profitPct = ((inv.currentValue / inv.investedAmount) - 1) * 100;
+              return (
+                <div key={inv.id} className="flex items-center justify-between py-1 border-b border-surface-light/50 last:border-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">{inv.emoji}</span>
+                    <span className="text-xs text-text">{inv.name}</span>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs font-bold text-text">{formatCurrency(inv.currentValue)}</p>
+                    <p className={`text-[10px] ${profit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {profitPct >= 0 ? '+' : ''}{profitPct.toFixed(1)}%
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Salary info */}
+      <div className="bg-surface rounded-xl p-4">
+        <h3 className="text-sm font-bold text-text mb-2">💰 Revenus</h3>
+        <div className="space-y-1 text-sm">
+          <div className="flex justify-between">
+            <span className="text-text-muted">Salaire hebdo</span>
+            <span className="text-text">{formatCurrency(career.contract.weeklySalary)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-text-muted">Salaire mensuel (×4)</span>
+            <span className="text-text">{formatCurrency(career.contract.weeklySalary * 4)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-text-muted">Salaire annuel (×52)</span>
+            <span className="text-text font-bold">{formatCurrency(career.contract.weeklySalary * 52)}</span>
+          </div>
         </div>
       </div>
     </div>
@@ -724,13 +779,17 @@ function TinderSwipe() {
 
   const popularity = gameState.social.popularity;
   const history = gameState.lifestyle.relationships.history;
+  // Calculate age offset: women ages are base ages at game start (year of first season)
+  const currentYear = gameState.time.currentDate.year;
+  const startYear = currentYear - (gameState.career.season - 1); // year when season 1 started
+  const ageOffset = currentYear - startYear;
 
   // Filter women by age and popularity, exclude past relationships
   const pastIds = history.map((h) => h.womanId);
   const available = ALL_WOMEN_DATA.filter(
     (w) =>
-      w.age >= ageFilter[0] &&
-      w.age <= ageFilter[1] &&
+      (w.age + ageOffset) >= ageFilter[0] &&
+      (w.age + ageOffset) <= ageFilter[1] &&
       w.popularityRequired <= popularity &&
       !pastIds.includes(w.id)
   );
@@ -828,7 +887,7 @@ function TinderSwipe() {
           <div className="px-4 pb-4">
             <div className="flex items-center gap-2 mb-1">
               <h3 className="text-xl font-black text-text">{currentWoman.firstName}</h3>
-              <span className="text-sm text-text-muted">{currentWoman.age} ans</span>
+              <span className="text-sm text-text-muted">{currentWoman.age + ageOffset} ans</span>
             </div>
             <p className="text-sm text-primary-light font-medium mb-1">{currentWoman.job}</p>
             <p className="text-xs text-text-muted mb-3">{currentWoman.description}</p>
@@ -1073,7 +1132,7 @@ function RelationshipDashboard({ relationship }: { relationship: Relationship })
           <span className="text-5xl">{woman?.emoji ?? '👩'}</span>
           <div className="flex-1">
             <h3 className="text-lg font-black text-text">{relationship.womanName}</h3>
-            <p className="text-xs text-text-muted">{woman?.job ?? ''} • {woman?.age ?? '?'} ans</p>
+            <p className="text-xs text-text-muted">{woman?.job ?? ''} • {woman ? woman.age + (currentDate.year - relationship.startDate.year) : '?'} ans</p>
             <p className="text-sm font-bold text-pink-400 mt-1">{statusLabel[relationship.status]}</p>
           </div>
         </div>

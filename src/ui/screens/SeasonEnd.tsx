@@ -9,9 +9,11 @@ import { useNavigation } from '../hooks/useNavigation';
 import { generateSeasonSchedule } from '../../systems/league/LeagueEngine';
 import { clubsByCountry } from '../../data/clubs/index';
 import { formatCurrency } from '../../utils/formatters';
+import { generateBallonDorRanking, generateBestYoungPlayer, type BallonDorCandidate } from '../../systems/career/BallonDor';
+import { createRNG } from '../../utils/random';
 import type { LeagueState, LeagueStanding, TopScorer, Country, Division, ScheduledMatch } from '../../core/types';
 
-type CeremonyStep = 'recap' | 'champion' | 'topscorer' | 'bestxi' | 'player' | 'next';
+type CeremonyStep = 'recap' | 'champion' | 'topscorer' | 'ballondor' | 'bestxi' | 'player' | 'next';
 
 export function SeasonEnd() {
   const { goToScreen } = useNavigation();
@@ -134,6 +136,21 @@ export function SeasonEnd() {
           currentDate: { day: 8, month: 8, year: newYear },
           weekday: 3,
           season: newSeason,
+          schedule: (() => {
+            // Find the player's new league schedule and set the next match
+            const playerLeague = newLeagues.find(
+              (l) => l.division.country === career.currentClub.country && l.division.level === 1
+            );
+            const playerSchedule = playerLeague?.schedule ?? [];
+            const playerClubId = career.currentClub.id;
+            const nextMatch = playerSchedule.find(
+              (m) => m.matchday === 1 && (m.homeTeam === playerClubId || m.awayTeam === playerClubId)
+            ) ?? null;
+            return {
+              nextMatch,
+              seasonMatches: playerSchedule,
+            };
+          })(),
         },
         leagues: newLeagues,
         social: { ...state.gameState.social, teamMorale: 60 },
@@ -235,13 +252,15 @@ export function SeasonEnd() {
           )}
 
           <button
-            onClick={() => setStep('player')}
+            onClick={() => setStep('ballondor')}
             className="py-3 px-8 bg-primary text-white font-semibold rounded-xl active:scale-95"
           >
             Suivant →
           </button>
         </div>
       )}
+
+      {step === 'ballondor' && <BallonDorStep gameState={gameState} onNext={() => setStep('player')} />}
 
       {step === 'player' && (
         <div className="flex-1 flex flex-col items-center justify-center text-center">
@@ -321,6 +340,165 @@ export function SeasonEnd() {
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Ballon d'Or Step ────────────────────────────────────────────────────────
+
+function BallonDorStep({ gameState, onNext }: { gameState: any; onNext: () => void }) {
+  const [subStep, setSubStep] = useState<'ranking' | 'young'>('ranking');
+
+  const rng = createRNG(gameState.career.season * 1000 + gameState.time.currentDate.year);
+  const ranking = generateBallonDorRanking(gameState, rng);
+  const youngRanking = generateBestYoungPlayer(gameState, createRNG(gameState.career.season * 2000));
+
+  const playerInRanking = ranking.find((c) => c.isPlayer);
+  const playerPosition = playerInRanking ? ranking.indexOf(playerInRanking) + 1 : null;
+
+  const playerInYoung = youngRanking.find((c) => c.isPlayer);
+  const playerYoungPosition = playerInYoung ? youngRanking.indexOf(playerInYoung) + 1 : null;
+
+  const winner = ranking[0];
+  const youngWinner = youngRanking[0];
+
+  if (subStep === 'ranking') {
+    return (
+      <div className="flex-1 flex flex-col items-center text-center overflow-y-auto pb-6">
+        <p className="text-5xl mb-3 mt-4">🏆</p>
+        <h2 className="text-xl font-bold text-text mb-1">Ballon d'Or</h2>
+        <p className="text-text-muted text-sm mb-4">Saison {gameState.career.season}</p>
+
+        {/* Winner */}
+        <div className="bg-gradient-to-r from-yellow-500/20 to-amber-500/20 rounded-2xl p-4 border border-yellow-500/40 mb-4 w-full max-w-sm">
+          <p className="text-xs text-text-muted">🥇 Ballon d'Or</p>
+          <p className="text-2xl font-black text-yellow-400">{winner.name}</p>
+          <p className="text-sm text-text-muted">{winner.club} • {winner.goals} buts, {winner.assists} PD</p>
+        </div>
+
+        {/* Player position */}
+        {playerPosition && (
+          <div className={`rounded-xl p-3 mb-4 w-full max-w-sm ${playerPosition <= 3 ? 'bg-yellow-500/10 border border-yellow-500/30' : 'bg-surface border border-surface-light'}`}>
+            <p className="text-sm text-text-muted">
+              Toi : <span className="text-primary-light font-bold">{playerPosition}e</span>
+              {' '}({playerInRanking!.goals} buts, {playerInRanking!.assists} PD, note {playerInRanking!.rating})
+            </p>
+            {playerPosition === 1 && <p className="text-yellow-400 font-bold mt-1">🏆 TU AS GAGNÉ LE BALLON D'OR !</p>}
+          </div>
+        )}
+
+        {/* Top 10 */}
+        <div className="w-full max-w-sm bg-surface rounded-xl p-3 mb-4">
+          <h3 className="text-xs font-bold text-text-muted mb-2">Top 10</h3>
+          <div className="space-y-1">
+            {ranking.slice(0, 10).map((candidate, idx) => (
+              <div
+                key={candidate.id}
+                className={`flex items-center justify-between py-1.5 px-2 rounded ${candidate.isPlayer ? 'bg-primary/15' : ''}`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-text-muted w-5">{idx + 1}.</span>
+                  <span className="text-xs">{candidate.country}</span>
+                  <span className={`text-xs ${candidate.isPlayer ? 'text-primary-light font-bold' : 'text-text'}`}>
+                    {candidate.name}
+                  </span>
+                </div>
+                <span className="text-xs text-text-muted">{candidate.goals}⚽ {candidate.assists}🎯</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Full ranking 11-30 (collapsed) */}
+        {ranking.length > 10 && (
+          <details className="w-full max-w-sm bg-surface rounded-xl p-3 mb-4">
+            <summary className="text-xs font-bold text-text-muted cursor-pointer">11e - 30e</summary>
+            <div className="space-y-1 mt-2">
+              {ranking.slice(10, 30).map((candidate, idx) => (
+                <div
+                  key={candidate.id}
+                  className={`flex items-center justify-between py-1 px-2 rounded ${candidate.isPlayer ? 'bg-primary/15' : ''}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-text-muted w-5">{idx + 11}.</span>
+                    <span className="text-xs">{candidate.country}</span>
+                    <span className={`text-xs ${candidate.isPlayer ? 'text-primary-light font-bold' : 'text-text-muted'}`}>
+                      {candidate.name}
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-text-muted">{candidate.goals}⚽</span>
+                </div>
+              ))}
+            </div>
+          </details>
+        )}
+
+        <button
+          onClick={() => setSubStep('young')}
+          className="py-3 px-8 bg-primary text-white font-semibold rounded-xl active:scale-95"
+        >
+          Meilleur Jeune →
+        </button>
+      </div>
+    );
+  }
+
+  // Young player award
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center text-center">
+      <p className="text-5xl mb-3">🌟</p>
+      <h2 className="text-xl font-bold text-text mb-1">Meilleur Jeune</h2>
+      <p className="text-text-muted text-sm mb-4">Joueurs de 21 ans et moins</p>
+
+      {/* Winner */}
+      <div className="bg-gradient-to-r from-blue-500/20 to-cyan-500/20 rounded-2xl p-4 border border-blue-500/40 mb-4 w-full max-w-sm">
+        <p className="text-xs text-text-muted">🥇 Trophée Kopa</p>
+        <p className="text-2xl font-black text-blue-400">{youngWinner.name}</p>
+        <p className="text-sm text-text-muted">{youngWinner.club} • {youngWinner.age} ans • {youngWinner.goals} buts</p>
+      </div>
+
+      {/* Player position if eligible */}
+      {playerYoungPosition && (
+        <div className={`rounded-xl p-3 mb-4 w-full max-w-sm ${playerYoungPosition === 1 ? 'bg-blue-500/10 border border-blue-500/30' : 'bg-surface border border-surface-light'}`}>
+          <p className="text-sm text-text-muted">
+            Toi : <span className="text-primary-light font-bold">{playerYoungPosition}e</span>
+          </p>
+          {playerYoungPosition === 1 && <p className="text-blue-400 font-bold mt-1">🌟 TU AS GAGNÉ LE TROPHÉE KOPA !</p>}
+        </div>
+      )}
+      {!playerInYoung && gameState.player.age > 21 && (
+        <div className="bg-surface rounded-xl p-3 mb-4 w-full max-w-sm">
+          <p className="text-xs text-text-muted">Tu as plus de 21 ans — non éligible</p>
+        </div>
+      )}
+
+      {/* Top 5 young */}
+      <div className="w-full max-w-sm bg-surface rounded-xl p-3 mb-6">
+        <div className="space-y-1">
+          {youngRanking.slice(0, 5).map((candidate, idx) => (
+            <div
+              key={candidate.id}
+              className={`flex items-center justify-between py-1.5 px-2 rounded ${candidate.isPlayer ? 'bg-primary/15' : ''}`}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-text-muted w-5">{idx + 1}.</span>
+                <span className={`text-xs ${candidate.isPlayer ? 'text-primary-light font-bold' : 'text-text'}`}>
+                  {candidate.name}
+                </span>
+                <span className="text-[10px] text-text-muted">{candidate.age} ans</span>
+              </div>
+              <span className="text-xs text-text-muted">{candidate.goals}⚽</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <button
+        onClick={onNext}
+        className="py-3 px-8 bg-primary text-white font-semibold rounded-xl active:scale-95"
+      >
+        Suivant →
+      </button>
     </div>
   );
 }
