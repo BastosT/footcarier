@@ -187,9 +187,27 @@ export function Transfers() {
     setNegotiationResult(accepted ? 'accepted' : 'rejected');
 
     if (accepted) {
-      // Transfer the player to the new club
+      // Transfer the player to the new club — update schedule for remaining matches
       const state = useGameStore.getState();
       if (!state.gameState) return;
+
+      const newClubId = negotiating.club.id;
+      const currentMatchday = state.gameState.career.matchday;
+
+      // Find the new club's league and get remaining schedule
+      const newClubLeague = state.gameState.leagues.find(
+        (l) => l.division.country === negotiating.club.country && l.division.level === 1
+      );
+      const newClubSchedule = newClubLeague?.schedule ?? [];
+
+      // Get remaining matches for the new club (matchday > current)
+      const remainingMatches = newClubSchedule.filter(
+        (m) => m.matchday > currentMatchday &&
+          (m.homeTeam === newClubId || m.awayTeam === newClubId)
+      );
+
+      // Find the next match for the new club
+      const nextMatch = remainingMatches[0] ?? null;
 
       useGameStore.setState({
         gameState: {
@@ -209,12 +227,19 @@ export function Transfers() {
             transferHistory: [
               ...(state.gameState.career.transferHistory ?? []),
               {
-                fromClub: career.currentClub.name,
-                toClub: negotiating.club.name,
-                date: time.currentDate,
-                salary: requestedSalary,
+                fromClubId: career.currentClub.id,
+                toClubId: negotiating.club.id,
+                season: state.gameState.career.season,
+                fee: 0,
               },
             ],
+          },
+          time: {
+            ...state.gameState.time,
+            schedule: {
+              nextMatch,
+              seasonMatches: newClubSchedule,
+            },
           },
           finance: {
             ...state.gameState.finance,
