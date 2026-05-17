@@ -80,6 +80,7 @@ export function MatchPlay() {
 
     const rng = rngRef.current;
     const player = gameState.player;
+    const teamMorale = gameState.social.teamMorale ?? 50;
 
     // More actions: 6-10 per match, spread randomly
     const numActions = rng.randomInt(6, 10);
@@ -115,7 +116,6 @@ export function MatchPlay() {
     const playerTeamRating = tierRating[playerTeamTier] ?? 72;
 
     // Team morale influences match outcome
-    const teamMorale = gameState.social.teamMorale ?? 50;
     // Morale modifier: high morale (80+) = -0.08 opponent chance, low morale (20-) = +0.08
     const moraleModifier = (50 - teamMorale) / 625; // range: -0.08 to +0.08
 
