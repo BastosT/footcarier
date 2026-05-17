@@ -508,12 +508,25 @@ export interface CelebrityRelationsState {
   relations: CelebrityRelation[];
 }
 
+// ─── Sponsoring ──────────────────────────────────────────────────────────────
+
+export interface SponsorContract {
+  id: string;
+  brand: string;
+  emoji: string;
+  monthlyPay: number;       // paiement mensuel en €
+  startDate: GameDate;
+  durationMonths: number;   // durée en mois
+  monthsRemaining: number;
+}
+
 export interface LifestyleState {
   possessions: OwnedItem[];
   investments: Investment[];
   instagram: InstagramState;
   relationships: RelationshipState;
   celebrities: CelebrityRelationsState;
+  sponsorContracts: SponsorContract[];
 }
 
 export interface Investment {

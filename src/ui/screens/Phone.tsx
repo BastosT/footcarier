@@ -373,6 +373,41 @@ function SocialView() {
     { type: 'reel' as const, caption: '🎥 Reel lifestyle', emoji: '🚗', baseGain: { min: 100, max: 500 } },
   ];
 
+  const handleAcceptSponsoring = (dm: { id: string; brand: string; emoji: string; monthlyPay: number; durationMonths: number }) => {
+    const state = useGameStore.getState();
+    if (!state.gameState) return;
+
+    const existing = state.gameState.lifestyle.sponsorContracts ?? [];
+    if (existing.some((c) => c.id === dm.id)) {
+      setPostMessage(`⚠️ Tu as déjà un contrat avec ${dm.brand}`);
+      setTimeout(() => setPostMessage(null), 2000);
+      return;
+    }
+
+    const newContract = {
+      id: dm.id,
+      brand: dm.brand,
+      emoji: dm.emoji,
+      monthlyPay: dm.monthlyPay,
+      startDate: state.gameState.time.currentDate,
+      durationMonths: dm.durationMonths,
+      monthsRemaining: dm.durationMonths,
+    };
+
+    useGameStore.setState({
+      gameState: {
+        ...state.gameState,
+        lifestyle: {
+          ...state.gameState.lifestyle,
+          sponsorContracts: [...existing, newContract],
+        },
+      },
+    });
+
+    setPostMessage(`✅ Contrat signé avec ${dm.brand} ! +${dm.monthlyPay.toLocaleString()}€/mois`);
+    setTimeout(() => setPostMessage(null), 4000);
+  };
+
   const handlePost = (option: typeof postOptions[0]) => {
     const state = useGameStore.getState();
     if (!state.gameState) return;
@@ -547,25 +582,79 @@ function SocialView() {
 
       {/* Brand DMs / Sponsoring */}
       <div className="p-4 pt-0">
-        <h3 className="text-sm font-bold text-text mb-3">📩 Messages de marques</h3>
+        <h3 className="text-sm font-bold text-text mb-3">📩 Offres de sponsoring</h3>
         {instagram.followers >= 5000 ? (
           <div className="space-y-2">
-            {generateBrandDMs(instagram.followers).map((dm, idx) => (
-              <div key={idx} className="bg-surface rounded-xl p-3 border border-surface-light">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-sm">{dm.emoji}</span>
-                  <p className="text-xs font-bold text-text">{dm.brand}</p>
-                  <span className="text-[10px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded">Sponsorisé</span>
+            {generateBrandDMs(instagram.followers).map((dm) => {
+              const alreadySigned = (gameState.lifestyle.sponsorContracts ?? []).some((c) => c.id === dm.id);
+              return (
+                <div key={dm.id} className="bg-surface rounded-xl p-3 border border-surface-light">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-sm">{dm.emoji}</span>
+                    <p className="text-xs font-bold text-text">{dm.brand}</p>
+                    <span className="text-[10px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded">Sponsorisé</span>
+                  </div>
+                  <p className="text-xs text-text-muted">{dm.message}</p>
+                  <p className="text-xs text-green-400 mt-1">💰 {dm.offer} ({dm.durationMonths} mois)</p>
+                  {alreadySigned ? (
+                    <p className="text-xs text-green-400 font-bold mt-2">✅ Contrat signé</p>
+                  ) : (
+                    <div className="flex gap-2 mt-2">
+                      <button
+                        onClick={() => handleAcceptSponsoring(dm)}
+                        className="flex-1 py-1.5 bg-green-500/20 text-green-400 text-xs font-bold rounded-lg border border-green-500/40 active:scale-95"
+                      >
+                        ✅ Accepter
+                      </button>
+                      <button
+                        onClick={() => {
+                          setPostMessage(`❌ Offre de ${dm.brand} refusée`);
+                          setTimeout(() => setPostMessage(null), 2000);
+                        }}
+                        className="flex-1 py-1.5 bg-red-500/20 text-red-400 text-xs font-bold rounded-lg border border-red-500/40 active:scale-95"
+                      >
+                        ❌ Refuser
+                      </button>
+                    </div>
+                  )}
                 </div>
-                <p className="text-xs text-text-muted">{dm.message}</p>
-                <p className="text-xs text-green-400 mt-1">💰 {dm.offer}</p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <p className="text-xs text-text-muted">Atteins 5K abonnés pour recevoir des offres de marques</p>
         )}
       </div>
+
+      {/* Active sponsor contracts */}
+      {(gameState.lifestyle.sponsorContracts ?? []).length > 0 && (
+        <div className="p-4 pt-0">
+          <h3 className="text-sm font-bold text-text mb-3">📋 Mes contrats de sponsoring</h3>
+          <div className="space-y-2">
+            {(gameState.lifestyle.sponsorContracts ?? []).map((contract) => (
+              <div key={contract.id} className="bg-surface rounded-xl p-3 border border-surface-light">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">{contract.emoji}</span>
+                    <div>
+                      <p className="text-xs font-bold text-text">{contract.brand}</p>
+                      <p className="text-xs text-green-400">+{contract.monthlyPay.toLocaleString()}€/mois</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-text-muted">{contract.monthsRemaining} mois restants</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+            <div className="bg-green-500/10 rounded-lg p-2 text-center">
+              <p className="text-xs text-green-400 font-medium">
+                Total sponsoring : +{(gameState.lifestyle.sponsorContracts ?? []).reduce((sum, c) => sum + c.monthlyPay, 0).toLocaleString()}€/mois
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Feed — Other players */}
       <div className="p-4 pt-0">
@@ -627,18 +716,18 @@ function generateFanComments(post: any, playerName: string): { user: string; tex
   return selected;
 }
 
-function generateBrandDMs(followers: number): { brand: string; emoji: string; message: string; offer: string }[] {
+function generateBrandDMs(followers: number): { id: string; brand: string; emoji: string; message: string; offer: string; monthlyPay: number; minFollowers: number; durationMonths: number }[] {
   const allBrands = [
-    { brand: 'Nike', emoji: '👟', message: 'On aimerait te proposer un partenariat...', offer: '2 000€/mois', minFollowers: 5000 },
-    { brand: 'Adidas', emoji: '⚽', message: 'Tu nous intéresses pour notre prochaine campagne', offer: '3 000€/mois', minFollowers: 10000 },
-    { brand: 'Puma', emoji: '🐆', message: 'Collaboration possible ?', offer: '1 500€/mois', minFollowers: 5000 },
-    { brand: 'Hublot', emoji: '⌚', message: 'Ambassadeur de notre nouvelle collection ?', offer: '5 000€/mois', minFollowers: 50000 },
-    { brand: 'Gucci', emoji: '👔', message: 'On te veut pour notre défilé', offer: '8 000€/mois', minFollowers: 100000 },
-    { brand: 'EA Sports', emoji: '🎮', message: 'Cover du prochain FC ?', offer: '50 000€', minFollowers: 500000 },
-    { brand: 'Pepsi', emoji: '🥤', message: 'Pub TV mondiale ?', offer: '100 000€', minFollowers: 1000000 },
+    { id: 'sp-nike', brand: 'Nike', emoji: '👟', message: 'On aimerait te proposer un partenariat...', offer: '2 000€/mois', monthlyPay: 2000, minFollowers: 5000, durationMonths: 12 },
+    { id: 'sp-adidas', brand: 'Adidas', emoji: '⚽', message: 'Tu nous intéresses pour notre prochaine campagne', offer: '3 000€/mois', monthlyPay: 3000, minFollowers: 10000, durationMonths: 12 },
+    { id: 'sp-puma', brand: 'Puma', emoji: '🐆', message: 'Collaboration possible ?', offer: '1 500€/mois', monthlyPay: 1500, minFollowers: 5000, durationMonths: 6 },
+    { id: 'sp-hublot', brand: 'Hublot', emoji: '⌚', message: 'Ambassadeur de notre nouvelle collection ?', offer: '5 000€/mois', monthlyPay: 5000, minFollowers: 50000, durationMonths: 12 },
+    { id: 'sp-gucci', brand: 'Gucci', emoji: '👔', message: 'On te veut pour notre défilé', offer: '8 000€/mois', monthlyPay: 8000, minFollowers: 100000, durationMonths: 12 },
+    { id: 'sp-ea', brand: 'EA Sports', emoji: '🎮', message: 'Cover du prochain FC ?', offer: '15 000€/mois', monthlyPay: 15000, minFollowers: 500000, durationMonths: 12 },
+    { id: 'sp-pepsi', brand: 'Pepsi', emoji: '🥤', message: 'Pub TV mondiale ?', offer: '25 000€/mois', monthlyPay: 25000, minFollowers: 1000000, durationMonths: 6 },
   ];
 
-  return allBrands.filter((b) => followers >= b.minFollowers).slice(0, 3);
+  return allBrands.filter((b) => followers >= b.minFollowers).slice(0, 5);
 }
 
 function generateFeedPosts(country: string): { player: string; club: string; caption: string; likes: number; comments: number }[] {

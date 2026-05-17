@@ -95,6 +95,31 @@ export function useGameLoop(): UseGameLoopReturn {
           gameState: { ...latestState.gameState, lifestyle: { ...latestState.gameState.lifestyle, investments: updatedInvestments } },
         });
       }
+
+      // Monthly sponsoring payments
+      const sponsorState = useGameStore.getState();
+      if (sponsorState.gameState && (sponsorState.gameState.lifestyle.sponsorContracts ?? []).length > 0) {
+        const contracts = sponsorState.gameState.lifestyle.sponsorContracts ?? [];
+        const totalSponsorIncome = contracts.reduce((sum, c) => sum + c.monthlyPay, 0);
+        // Decrease months remaining, remove expired contracts
+        const updatedContracts = contracts
+          .map((c) => ({ ...c, monthsRemaining: c.monthsRemaining - 1 }))
+          .filter((c) => c.monthsRemaining > 0);
+
+        useGameStore.setState({
+          gameState: {
+            ...sponsorState.gameState,
+            finance: {
+              ...sponsorState.gameState.finance,
+              balance: sponsorState.gameState.finance.balance + totalSponsorIncome,
+            },
+            lifestyle: {
+              ...sponsorState.gameState.lifestyle,
+              sponsorContracts: updatedContracts,
+            },
+          },
+        });
+      }
     }
 
     return result;
@@ -180,6 +205,30 @@ export function useGameLoop(): UseGameLoopReturn {
 
         useGameStore.setState({
           gameState: { ...latestState.gameState, lifestyle: { ...latestState.gameState.lifestyle, investments: updatedInvestments } },
+        });
+      }
+
+      // Monthly sponsoring payments (simulateWeek)
+      const sponsorState = useGameStore.getState();
+      if (sponsorState.gameState && (sponsorState.gameState.lifestyle.sponsorContracts ?? []).length > 0) {
+        const contracts = sponsorState.gameState.lifestyle.sponsorContracts ?? [];
+        const totalSponsorIncome = contracts.reduce((sum, c) => sum + c.monthlyPay, 0);
+        const updatedContracts = contracts
+          .map((c) => ({ ...c, monthsRemaining: c.monthsRemaining - 1 }))
+          .filter((c) => c.monthsRemaining > 0);
+
+        useGameStore.setState({
+          gameState: {
+            ...sponsorState.gameState,
+            finance: {
+              ...sponsorState.gameState.finance,
+              balance: sponsorState.gameState.finance.balance + totalSponsorIncome,
+            },
+            lifestyle: {
+              ...sponsorState.gameState.lifestyle,
+              sponsorContracts: updatedContracts,
+            },
+          },
         });
       }
     }
