@@ -36,10 +36,7 @@ type CLSubTab = 'standings' | 'calendar' | 'bracket';
 export function ChampionsLeagueTab({ state, playerClubId }: ChampionsLeagueTabProps) {
   const [activeSubTab, setActiveSubTab] = useState<CLSubTab>('standings');
 
-  // Requirement 7.1: Only show if player participates
-  if (!state.playerParticipating) {
-    return null;
-  }
+  // Show standings even if player doesn't participate (spectator mode)
 
   // Resolve the CL participant ID from the actual club ID
   // The schedule uses CLParticipant.id (e.g. "cl-qualified-france-1") not the club ID (e.g. "psg")

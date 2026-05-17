@@ -65,18 +65,16 @@ export function ClubHub() {
         >
           📅 Calendrier
         </button>
-        {playerInCL && (
-          <button
-            onClick={() => setActiveTab('champions')}
-            className={`flex-shrink-0 flex-1 py-3 text-sm font-medium transition-colors ${
-              activeTab === 'champions'
-                ? 'text-primary-light border-b-2 border-primary-light'
-                : 'text-text-muted'
-            }`}
-          >
-            🏆 LDC
-          </button>
-        )}
+        <button
+          onClick={() => setActiveTab('champions')}
+          className={`flex-shrink-0 flex-1 py-3 text-sm font-medium transition-colors ${
+            activeTab === 'champions'
+              ? 'text-primary-light border-b-2 border-primary-light'
+              : 'text-text-muted'
+          }`}
+        >
+          🏆 LDC
+        </button>
         <button
           onClick={() => setActiveTab('locker')}
           className={`flex-shrink-0 flex-1 py-3 text-sm font-medium transition-colors ${
@@ -99,11 +97,20 @@ export function ClubHub() {
           currentMatchday={currentMatchday}
           leagues={gameState.leagues}
         />
-      ) : activeTab === 'champions' && championsLeague ? (
+      ) : activeTab === 'champions' ? (
         <div className="flex-1 overflow-y-auto px-4 py-4 pb-20">
-          <ChampionsLeagueTab state={championsLeague} playerClubId={playerClubId} />
+          {championsLeague ? (
+            <ChampionsLeagueTab state={championsLeague} playerClubId={playerClubId} />
+          ) : (
+            <div className="text-center py-12">
+              <p className="text-4xl mb-4">🏆</p>
+              <p className="text-text font-medium">Ligue des Champions</p>
+              <p className="text-xs text-text-muted mt-2">Ton club ne participe pas cette saison.</p>
+              <p className="text-xs text-text-muted mt-1">Termine dans le top 4 pour te qualifier !</p>
+            </div>
+          )}
         </div>
-      ) : (
+      ) : activeTab === 'locker' ? (
         <div className="flex-1 overflow-y-auto pb-20">
           {/* Coach section */}
           <div className="p-4 bg-surface m-4 rounded-xl">
@@ -140,7 +147,7 @@ export function ClubHub() {
           {/* Squad */}
           <Locker squad={squad} teamMorale={teamMorale} />
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
