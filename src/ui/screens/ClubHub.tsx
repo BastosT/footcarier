@@ -155,6 +155,8 @@ interface CalendarViewProps {
 }
 
 function CalendarView({ matches, playerClubId, currentMatchday, leagues }: CalendarViewProps) {
+  const championsLeague = useGameStore((s) => s.championsLeague);
+
   // Find the first upcoming match index
   const nextMatchIdx = matches.findIndex((m) => m.matchday > currentMatchday);
 
@@ -164,15 +166,87 @@ function CalendarView({ matches, playerClubId, currentMatchday, leagues }: Calen
   );
   const results = playerLeague?.results ?? [];
 
+  // Get CL matches for the player's club
+  const clMatches: { date: { day: number; month: number; year: number }; opponentName: string; isHome: boolean; matchday: number; score: string | null; competition: string }[] = [];
+  if (championsLeague?.playerParticipating && !championsLeague.playerEliminated) {
+    const playerParticipant = championsLeague.participants.find((p) => p.clubId === playerClubId);
+    const playerParticipantId = playerParticipant?.id ?? playerClubId;
+
+    for (const clMatch of championsLeague.leagueSchedule) {
+      if (clMatch.homeTeamId === playerParticipantId || clMatch.awayTeamId === playerParticipantId) {
+        const isHome = clMatch.homeTeamId === playerParticipantId;
+        const opponentId = isHome ? clMatch.awayTeamId : clMatch.homeTeamId;
+        const opponent = championsLeague.participants.find((p) => p.id === opponentId);
+
+        // Check if match has been played
+        const clResult = championsLeague.leagueResults.find(
+          (r) => r.homeTeamId === clMatch.homeTeamId && r.awayTeamId === clMatch.awayTeamId && r.matchday === clMatch.matchday
+        );
+        const score = clResult ? `${clResult.homeGoals} - ${clResult.awayGoals}` : null;
+
+        clMatches.push({
+          date: clMatch.date,
+          opponentName: opponent?.name ?? 'Inconnu',
+          isHome,
+          matchday: clMatch.matchday,
+          score,
+          competition: 'LDC',
+        });
+      }
+    }
+  }
+
   return (
     <div className="flex-1 overflow-y-auto px-4 py-4 pb-20">
       <h2 className="text-lg font-bold text-text mb-4">
-        Calendrier — 34 journées
+        Calendrier
       </h2>
       <p className="text-xs text-text-muted mb-4">
         Journée actuelle : {currentMatchday} / 34
+        {clMatches.length > 0 && ` • ${clMatches.length} matchs LDC`}
       </p>
 
+      {/* CL matches section */}
+      {clMatches.length > 0 && (
+        <div className="mb-4">
+          <h3 className="text-xs font-bold text-yellow-400 mb-2">🏆 Ligue des Champions</h3>
+          <div className="space-y-1.5">
+            {clMatches.map((clm, idx) => (
+              <div
+                key={`cl-${idx}`}
+                className={`flex items-center gap-3 p-2.5 rounded-lg border ${
+                  clm.score ? 'border-surface-light bg-surface/50' : 'border-yellow-500/30 bg-yellow-500/5'
+                }`}
+              >
+                <div className="w-8 text-center">
+                  <span className="text-[10px] font-bold text-yellow-400">J{clm.matchday}</span>
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[10px] px-1 py-0.5 rounded ${
+                      clm.isHome ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'
+                    }`}>
+                      {clm.isHome ? 'DOM' : 'EXT'}
+                    </span>
+                    <span className="text-xs font-medium text-text">{clm.opponentName}</span>
+                    <span className="text-[10px] text-yellow-400">LDC</span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  {clm.score ? (
+                    <span className="text-xs font-bold text-text">{clm.score}</span>
+                  ) : (
+                    <span className="text-[10px] text-text-muted">{clm.date.day}/{clm.date.month}</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* League matches */}
+      <h3 className="text-xs font-bold text-text-muted mb-2">⚽ Championnat — 34 journées</h3>
       <div className="space-y-2">
         {matches.map((match, idx) => {
           const isHome = match.homeTeam === playerClubId;
