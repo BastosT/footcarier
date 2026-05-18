@@ -931,7 +931,6 @@ function RelationshipDashboard({ relationship }: { relationship: Relationship })
   const [message, setMessage] = useState<string | null>(null);
   const [showBabyNaming, setShowBabyNaming] = useState(false);
   const [babyName, setBabyName] = useState('');
-  const [babyGender, setBabyGender] = useState<'boy' | 'girl'>('boy');
 
   if (!gameState) return null;
 
@@ -1136,24 +1135,6 @@ function RelationshipDashboard({ relationship }: { relationship: Relationship })
 
             <div className="space-y-4">
               <div>
-                <label className="text-xs text-text-muted mb-1 block">Genre</label>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setBabyGender('boy')}
-                    className={`flex-1 py-2 rounded-lg text-sm font-bold ${babyGender === 'boy' ? 'bg-blue-500 text-white' : 'bg-surface-light text-text-muted'}`}
-                  >
-                    👦 Garçon
-                  </button>
-                  <button
-                    onClick={() => setBabyGender('girl')}
-                    className={`flex-1 py-2 rounded-lg text-sm font-bold ${babyGender === 'girl' ? 'bg-pink-500 text-white' : 'bg-surface-light text-text-muted'}`}
-                  >
-                    👧 Fille
-                  </button>
-                </div>
-              </div>
-
-              <div>
                 <label className="text-xs text-text-muted mb-1 block">Prénom</label>
                 <input
                   type="text"
@@ -1178,10 +1159,12 @@ function RelationshipDashboard({ relationship }: { relationship: Relationship })
                     const state = useGameStore.getState();
                     if (!state.gameState) return;
 
+                    const randomGender: 'boy' | 'girl' = Math.random() < 0.5 ? 'boy' : 'girl';
+
                     const newChild = {
                       id: `child-${Date.now()}`,
                       firstName: babyName.trim(),
-                      gender: babyGender,
+                      gender: randomGender,
                       birthDate: state.gameState.time.currentDate,
                     };
 
@@ -1202,7 +1185,7 @@ function RelationshipDashboard({ relationship }: { relationship: Relationship })
 
                     setShowBabyNaming(false);
                     setBabyName('');
-                    setMessage(`🎉 Félicitations ! ${babyName.trim()} est né${babyGender === 'girl' ? 'e' : ''} !`);
+                    setMessage(`🎉 Félicitations ! C'est ${randomGender === 'boy' ? 'un garçon' : 'une fille'} ! ${babyName.trim()} est né${randomGender === 'girl' ? 'e' : ''} !`);
                     setTimeout(() => setMessage(null), 5000);
                   }}
                   disabled={!babyName.trim()}
