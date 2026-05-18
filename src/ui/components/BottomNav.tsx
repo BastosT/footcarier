@@ -90,7 +90,7 @@ const tabs: TabConfig[] = [
 export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around bg-gray-900 border-t border-gray-700 px-2 py-2 safe-bottom"
+      className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around bg-background/80 backdrop-blur-xl border-t border-surface-light/50 px-2 pt-2 safe-bottom"
       role="tablist"
       aria-label="Navigation principale"
     >
@@ -103,17 +103,18 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
             aria-selected={isActive}
             aria-label={tab.label}
             onClick={() => onTabChange(tab.id)}
-            className={`flex flex-col items-center justify-center gap-0.5 px-3 py-1.5 rounded-lg transition-colors ${
+            className={`flex flex-col items-center justify-center gap-0.5 px-4 py-2 rounded-xl transition-all ${
               isActive
-                ? 'text-emerald-400'
-                : 'text-gray-400 hover:text-gray-200'
+                ? 'text-primary-light scale-105'
+                : 'text-text-muted active:scale-95'
             }`}
           >
             {tab.id === 'home' && <HomeIcon active={isActive} />}
             {tab.id === 'club' && <ClubIcon active={isActive} />}
             {tab.id === 'person' && <PersonIcon active={isActive} />}
             {tab.id === 'trophy' && <TrophyIcon active={isActive} />}
-            <span className="text-xs font-medium">{tab.label}</span>
+            <span className={`text-[10px] font-semibold ${isActive ? 'text-primary-light' : ''}`}>{tab.label}</span>
+            {isActive && <div className="w-1 h-1 rounded-full bg-primary-light mt-0.5" />}
           </button>
         );
       })}

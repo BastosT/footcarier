@@ -53,63 +53,62 @@ export function MainScreen({
 }: MainScreenProps) {
   return (
     <div className="min-h-dvh flex flex-col bg-background overflow-y-auto pb-20">
-      {/* Hero header with gradient */}
-      <section className="relative bg-gradient-to-b from-primary/30 to-background pt-safe-top px-4" style={{ paddingTop: 'max(2rem, env(safe-area-inset-top, 2rem))' }}>
-        <div className="flex items-center gap-4 pb-4">
+      {/* Hero header */}
+      <section className="relative px-4" style={{ paddingTop: 'max(1.5rem, env(safe-area-inset-top, 1.5rem))' }}>
+        <div className="flex items-center gap-3 pb-4">
           <Avatar appearance={player.appearance} size="md" />
-          <div className="flex-1">
-            <h1 className="text-xl font-bold text-text">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg font-bold text-text truncate">
               {player.firstName} {player.lastName}
             </h1>
-            <p className="text-sm text-text-muted">
-              {player.position} • OVR <span className="text-primary-light font-bold">{player.overallRating}</span>
+            <p className="text-xs text-text-muted">
+              {player.position} • <span className="text-primary-light font-semibold">{player.overallRating}</span> OVR
             </p>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-text-muted">🏃 Forme</span>
-            <div className="flex-1">
-              <FitnessBar fitness={player.fitness} compact />
+            <div className="flex items-center gap-2 mt-1">
+              <div className="flex-1 h-1.5 bg-surface-light rounded-full overflow-hidden">
+                <div className="h-full bg-secondary rounded-full" style={{ width: `${player.fitness}%` }} />
+              </div>
+              <span className="text-[10px] text-text-muted">{player.fitness}%</span>
             </div>
           </div>
-          </div>
-        </div>
-        {/* Date badge + Phone */}
-        <div className="absolute top-4 right-4 flex items-center gap-2" style={{ top: 'max(1rem, env(safe-area-inset-top, 1rem))' }}>
-          {onPhone && (
-            <button
-              onClick={onPhone}
-              className="bg-surface/80 backdrop-blur-sm rounded-lg w-9 h-9 flex items-center justify-center active:scale-95"
-            >
-              <span className="text-lg">📱</span>
-            </button>
-          )}
-          <div className="bg-surface/80 backdrop-blur-sm rounded-lg px-3 py-1.5">
-            <p className="text-xs font-medium text-text">{formatGameDate(currentDate)}</p>
-            <p className="text-[10px] text-text-muted text-center capitalize">{getWeekdayName(getWeekday(currentDate))}</p>
+          {/* Date + Phone */}
+          <div className="flex flex-col items-end gap-1">
+            {onPhone && (
+              <button
+                onClick={onPhone}
+                className="w-8 h-8 bg-surface rounded-lg flex items-center justify-center active:scale-90 transition-transform"
+              >
+                <span className="text-sm">📱</span>
+              </button>
+            )}
+            <div className="text-right">
+              <p className="text-[10px] font-medium text-text-muted">{formatGameDate(currentDate)}</p>
+            </div>
           </div>
         </div>
       </section>
 
       {/* Next match card */}
       {nextMatch && (
-        <section className="px-4 mb-4">
-          <div className={`rounded-2xl p-4 border ${isMatchDay ? 'bg-secondary/10 border-secondary/40' : 'bg-surface border-surface-light'}`}>
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-medium text-text-muted">
-                {isMatchDay ? '🔴 AUJOURD\'HUI' : 'Prochain match'}
+        <section className="px-4 mb-3">
+          <div className={`rounded-xl p-3 border ${isMatchDay ? 'bg-secondary/10 border-secondary/40' : 'bg-surface border-surface-light/50'}`}>
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wide">
+                {isMatchDay ? '🔴 Aujourd\'hui' : 'Prochain'}
               </p>
-              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+              <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
                 nextMatch.homeTeam === playerClubId
-                  ? 'bg-green-500/20 text-green-400'
-                  : 'bg-blue-500/20 text-blue-400'
+                  ? 'bg-secondary/20 text-secondary-light'
+                  : 'bg-primary/20 text-primary-light'
               }`}>
                 {nextMatch.homeTeam === playerClubId ? 'DOM' : 'EXT'}
               </span>
             </div>
-            <p className="text-lg font-bold text-text">
+            <p className="text-sm font-bold text-text">
               vs {standings.find((s) => s.clubId === (nextMatch.homeTeam === playerClubId ? nextMatch.awayTeam : nextMatch.homeTeam))?.clubName ?? 'Adversaire'}
             </p>
-            <p className="text-xs text-text-muted mt-1">
-              {nextMatch.competition} • J{nextMatch.matchday} • {formatGameDate(nextMatch.date)}
+            <p className="text-[10px] text-text-muted mt-0.5">
+              J{nextMatch.matchday} • {formatGameDate(nextMatch.date)}
             </p>
           </div>
         </section>
@@ -120,8 +119,8 @@ export function MainScreen({
         {isMatchDay ? (
           <button
             onClick={onAdvanceDay}
-            className="w-full py-4 px-4 bg-gradient-to-r from-secondary to-green-500 text-white font-bold rounded-2xl
-                       active:scale-95 transition-all text-lg shadow-lg shadow-secondary/30"
+            className="w-full py-3.5 bg-gradient-to-r from-secondary to-emerald-500 text-white font-bold rounded-xl
+                       active:scale-[0.97] transition-all shadow-lg shadow-secondary/20"
           >
             ⚽ Jouer le match
           </button>
@@ -129,25 +128,25 @@ export function MainScreen({
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={onAdvanceDay}
-              className="py-3 px-3 bg-primary text-white font-semibold rounded-xl
-                         active:scale-95 transition-all text-sm"
+              className="py-3 bg-surface text-text font-semibold rounded-xl
+                         active:scale-[0.97] transition-all border border-surface-light/50"
             >
-              Jour suivant →
+              Jour →
             </button>
             <button
               onClick={onSimulateWeek}
-              className="py-3 px-3 bg-surface-light text-text font-semibold rounded-xl
-                         active:scale-95 transition-all text-sm border border-surface-light"
+              className="py-3 bg-surface text-text font-semibold rounded-xl
+                         active:scale-[0.97] transition-all border border-surface-light/50"
             >
-              Semaine →→
+              Semaine ⏩
             </button>
             {trainingAvailable && (
               <button
                 onClick={onTrain}
-                className="col-span-2 py-3 px-4 bg-gradient-to-r from-purple-600 to-purple-500 text-white font-semibold rounded-xl
-                           active:scale-95 transition-all text-sm"
+                className="col-span-2 py-3 bg-primary/20 text-primary-light font-semibold rounded-xl
+                           active:scale-[0.97] transition-all border border-primary/30"
               >
-                🏋️ Entraînement disponible
+                🏋️ Entraînement
               </button>
             )}
           </div>
@@ -155,12 +154,12 @@ export function MainScreen({
       </section>
 
       {/* Mini standings */}
-      <section className="px-4 pb-6">
+      <section className="px-4 pb-4">
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-sm font-bold text-text">📋 Classement</h2>
-          <p className="text-xs text-text-muted">{nextMatch?.competition ?? 'Ligue 1'}</p>
+          <h2 className="text-xs font-bold text-text-muted uppercase tracking-wide">Classement</h2>
+          <p className="text-[10px] text-text-muted">{nextMatch?.competition ?? 'Ligue 1'}</p>
         </div>
-        <div className="bg-surface rounded-2xl p-3 border border-surface-light max-h-64 overflow-y-auto">
+        <div className="bg-surface rounded-xl p-2 border border-surface-light/50 max-h-52 overflow-y-auto">
           <StandingsTable
             standings={standings}
             playerClubId={playerClubId}

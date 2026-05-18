@@ -71,22 +71,21 @@ export function MainMenu() {
   }
 
   return (
-    <div className="min-h-dvh flex flex-col items-center justify-center bg-gradient-to-b from-background via-background to-primary/10 p-6">
+    <div className="min-h-dvh flex flex-col items-center justify-center bg-background p-6">
       {/* Logo area */}
       <div className="text-center mb-16">
-        <div className="text-7xl mb-4">⚽</div>
-        <h1 className="text-4xl font-black text-text tracking-tight">
-          Football <span className="text-primary-light">Career</span>
+        <div className="text-6xl mb-3">⚽</div>
+        <h1 className="text-3xl font-black text-text tracking-tight">
+          Foot<span className="text-primary-light">Carier</span>
         </h1>
-        <p className="text-text-muted text-sm mt-2 tracking-wide uppercase">Vis ta vie de footballeur</p>
+        <p className="text-text-muted text-xs mt-2 tracking-widest uppercase">Vis ta carrière de footballeur</p>
       </div>
 
-      <div className="flex flex-col gap-3 w-full max-w-sm">
+      <div className="flex flex-col gap-3 w-full max-w-xs">
         <button
           onClick={() => goToScreen('character-creation')}
-          className="w-full py-4 px-6 bg-gradient-to-r from-primary to-primary-light text-white font-bold rounded-2xl
-                     active:scale-95 transition-all duration-200
-                     text-lg shadow-lg shadow-primary/30"
+          className="w-full py-4 px-6 bg-primary text-white font-bold rounded-xl
+                     active:scale-[0.97] transition-all text-base"
           aria-label="Nouvelle partie"
         >
           Nouvelle Partie
@@ -94,9 +93,8 @@ export function MainMenu() {
 
         <button
           onClick={() => setShowSaves(true)}
-          className="w-full py-4 px-6 bg-surface text-text font-semibold rounded-2xl
-                     active:scale-95 transition-all duration-200
-                     text-lg border border-surface-light"
+          className="w-full py-4 px-6 bg-surface text-text font-semibold rounded-xl
+                     active:scale-[0.97] transition-all text-base border border-surface-light/50"
           aria-label="Charger une partie"
         >
           Charger Partie
@@ -104,18 +102,9 @@ export function MainMenu() {
             <span className="ml-2 text-sm text-primary-light">({saves.length})</span>
           )}
         </button>
-
-        <button
-          className="w-full py-4 px-6 bg-surface/50 text-text-muted font-medium rounded-2xl
-                     active:scale-95 transition-all duration-200
-                     text-base border border-surface-light/50"
-          aria-label="Options"
-        >
-          Options
-        </button>
       </div>
 
-      <p className="mt-16 text-text-muted/50 text-xs tracking-wider">v0.2.0 — by bastos</p>
+      <p className="mt-16 text-text-muted/40 text-[10px] tracking-widest uppercase">v0.3.0</p>
     </div>
   );
 }
