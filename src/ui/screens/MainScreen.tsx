@@ -256,9 +256,50 @@ export function MainScreenConnected() {
   }
 
   const [injuryAlert, setInjuryAlert] = useState<string | null>(null);
+  const [scandalAlert, setScandalAlert] = useState(false);
 
   const { player, career, time, leagues } = gameState;
   const isInjured = player.injury !== null && player.injury.weeksRemaining > 0;
+
+  // Check for active scandal
+  const scandalActive = gameState.social.scandalActive ?? false;
+  if (scandalActive && !scandalAlert) {
+    setScandalAlert(true);
+    // Reset scandal flag
+    useGameStore.setState({
+      gameState: { ...gameState, social: { ...gameState.social, scandalActive: false } },
+    });
+  }
+
+  // Show scandal alert popup
+  if (scandalAlert) {
+    return (
+      <div className="min-h-dvh flex flex-col items-center justify-center bg-background p-6">
+        <div className="bg-surface rounded-2xl p-6 max-w-sm w-full text-center">
+          <p className="text-4xl mb-4">🔥📰</p>
+          <h2 className="text-xl font-bold text-red-400 mb-2">SCANDALE !</h2>
+          <p className="text-text-muted text-sm mb-3">
+            Tes déclarations controversées ont provoqué un bad buzz massif !
+          </p>
+          <div className="bg-red-500/10 rounded-xl p-3 mb-4 text-left space-y-1">
+            <p className="text-xs text-red-400">📉 Popularité -15</p>
+            <p className="text-xs text-red-400">📉 Réputation -20</p>
+            <p className="text-xs text-red-400">📉 Relation coach -10</p>
+            <p className="text-xs text-red-400">💔 Perte d'un contrat de sponsoring</p>
+          </div>
+          <p className="text-xs text-text-muted mb-4">
+            Fais attention à tes déclarations en interview !
+          </p>
+          <button
+            onClick={() => setScandalAlert(false)}
+            className="w-full py-3 px-6 bg-primary text-white font-semibold rounded-xl active:scale-95 transition-all"
+          >
+            Compris...
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Show injury alert popup
   if (injuryAlert) {

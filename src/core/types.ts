@@ -177,6 +177,8 @@ export interface SocialState {
   teamRelation: number;      // 0-100
   teamMorale: number;        // 0-100 — dépend des résultats (victoires/défaites)
   teamAmbiance: number;      // 0-100 — dépend des interactions (messages vestiaire)
+  controversyCount: number;  // nombre de controverses cette saison
+  scandalActive: boolean;    // scandale en cours
   socialFeed: SocialPost[];
   pendingInterviews: Interview[];
 }

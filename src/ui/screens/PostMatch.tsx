@@ -194,6 +194,56 @@ export function PostMatch() {
     updateCoachRelation(answer.impacts.coachRelation);
     updateTeamRelation(answer.impacts.teamRelation);
 
+    // Track controversies and trigger scandal if too many
+    if (answer.tone === 'controversial') {
+      const state = useGameStore.getState();
+      if (state.gameState) {
+        const newCount = (state.gameState.social.controversyCount ?? 0) + 1;
+        const triggerScandal = newCount >= 3 && !state.gameState.social.scandalActive;
+
+        let updatedSocial = {
+          ...state.gameState.social,
+          controversyCount: newCount,
+        };
+
+        if (triggerScandal) {
+          // SCANDAL! Major penalties
+          updatedSocial = {
+            ...updatedSocial,
+            scandalActive: true,
+            popularity: Math.max(0, updatedSocial.popularity - 15),
+            reputation: Math.max(0, updatedSocial.reputation - 20),
+            coachRelation: Math.max(0, updatedSocial.coachRelation - 10),
+          };
+
+          // Lose a random sponsor contract
+          const sponsors = state.gameState.lifestyle.sponsorContracts ?? [];
+          if (sponsors.length > 0) {
+            const lostSponsor = sponsors[0]; // lose the first one
+            useGameStore.setState({
+              gameState: {
+                ...state.gameState,
+                social: updatedSocial,
+                lifestyle: {
+                  ...state.gameState.lifestyle,
+                  sponsorContracts: sponsors.slice(1),
+                },
+              },
+            });
+            // Show scandal alert will be handled by the MainScreen
+          } else {
+            useGameStore.setState({
+              gameState: { ...state.gameState, social: updatedSocial },
+            });
+          }
+        } else {
+          useGameStore.setState({
+            gameState: { ...state.gameState, social: updatedSocial },
+          });
+        }
+      }
+    }
+
     setInterviewCompleted(true);
     setShowInterview(false);
   }
@@ -233,6 +283,16 @@ export function PostMatch() {
             Passer
           </button>
         </header>
+
+        {/* Controversy warning */}
+        {(gameState.social.controversyCount ?? 0) >= 2 && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 mb-4">
+            <p className="text-xs text-red-400 font-medium">
+              ⚠️ Attention ! Tu as déjà {gameState.social.controversyCount} déclarations controversées.
+              Un scandale peut éclater à la prochaine !
+            </p>
+          </div>
+        )}
 
         <div className="bg-surface rounded-xl p-4 mb-6">
           <p className="text-xs text-text-muted mb-2">Question du journaliste</p>

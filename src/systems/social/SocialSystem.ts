@@ -92,6 +92,8 @@ export function createInitialSocialState(): SocialState {
     teamRelation: 50,
     teamMorale: 50,
     teamAmbiance: 50,
+    controversyCount: 0,
+    scandalActive: false,
     socialFeed: [],
     pendingInterviews: [],
   };
