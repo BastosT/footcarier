@@ -64,13 +64,14 @@ function generateOffers(
   currentClubId: string,
   seasonGoals: number,
   seasonAssists: number,
-  seed: number
+  seed: number,
+  interestedClubNames: string[] = []
 ): TransferOffer[] {
   const eligibleTiers = getEligibleTiers(overallRating, seasonGoals, seasonAssists);
 
   // Get all clubs from all countries, filter by tier and exclude current club
-  const allClubs = Object.values(clubsByCountry).flat();
-  const eligible = allClubs.filter(
+  const allClubsList = Object.values(clubsByCountry).flat();
+  const eligible = allClubsList.filter(
     (c) => eligibleTiers.includes(c.tier) && c.id !== currentClubId
   );
 
@@ -79,18 +80,23 @@ function generateOffers(
   // Seeded random for deterministic offers
   let s = seed;
   const rand = () => { s = (s * 1664525 + 1013904223) & 0xFFFFFFFF; return (s >>> 0) / 0xFFFFFFFF; };
-  const shuffle = (arr: Club[]): Club[] => {
-    const a = [...arr];
-    for (let i = a.length - 1; i > 0; i--) {
-      const j = Math.floor(rand() * (i + 1));
-      [a[i], a[j]] = [a[j], a[i]];
-    }
-    return a;
-  };
 
-  // Generate 2-5 offers
-  const numOffers = 2 + Math.floor(rand() * 4);
-  const selectedClubs = shuffle(eligible).slice(0, numOffers);
+  // Prioritize clubs from agent's interested list
+  let selectedClubs: Club[] = [];
+  if (interestedClubNames.length > 0) {
+    // Find the actual club objects matching the agent's interested clubs
+    for (const name of interestedClubNames) {
+      const club = eligible.find((c) => c.name === name);
+      if (club) selectedClubs.push(club);
+    }
+  }
+
+  // If not enough from agent, fill with random eligible clubs
+  if (selectedClubs.length < 2) {
+    const remaining = eligible.filter((c) => !selectedClubs.some((sc) => sc.id === c.id));
+    const shuffled = [...remaining].sort(() => rand() - 0.5);
+    selectedClubs = [...selectedClubs, ...shuffled.slice(0, 3 - selectedClubs.length)];
+  }
 
   return selectedClubs.map((club) => {
     const salaryByTier: Record<ClubTier, { min: number; max: number }> = {
@@ -100,7 +106,7 @@ function generateOffers(
     };
     const range = salaryByTier[club.tier];
     const offeredSalary = Math.round((range.min + rand() * (range.max - range.min)) / 1000) * 1000;
-    const contractYears = 1 + Math.floor(rand() * 4); // 1-4 years
+    const contractYears = 1 + Math.floor(rand() * 4);
     const interestLevels: TransferOffer['interest'][] = ['low', 'medium', 'high'];
     const interest = interestLevels[Math.floor(rand() * 3)];
 
@@ -161,8 +167,9 @@ export function Transfers() {
 
   // Generate offers (deterministic based on month/year)
   const offerSeed = time.currentDate.year * 100 + time.currentDate.month;
+  const agentClubs = gameState.agent?.interestedClubs ?? [];
   const offers = inWindow
-    ? generateOffers(player.overallRating, career.currentClub.id, seasonGoals, seasonAssists, offerSeed)
+    ? generateOffers(player.overallRating, career.currentClub.id, seasonGoals, seasonAssists, offerSeed, agentClubs)
     : [];
 
   const handleNegotiate = (offer: TransferOffer) => {
