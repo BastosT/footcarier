@@ -199,6 +199,24 @@ export function Transfers() {
       const state = useGameStore.getState();
       if (!state.gameState) return;
 
+      // Archive current season stats with the old club before transfer
+      const currentStats = state.gameState.playerCareerStats?.season;
+      const existingHistory = state.gameState.playerCareerStats?.seasonHistory ?? [];
+      if (currentStats && currentStats.matchesPlayed > 0) {
+        const transferEntry = {
+          season: state.gameState.career.season,
+          clubName: state.gameState.career.currentClub.name,
+          clubId: state.gameState.career.currentClub.id,
+          goals: currentStats.goals,
+          assists: currentStats.assists,
+          matchesPlayed: currentStats.matchesPlayed,
+          avgRating: currentStats.matchesPlayed > 0
+            ? Math.round((currentStats.totalRating / currentStats.matchesPlayed) * 10) / 10
+            : 0,
+        };
+        existingHistory.push(transferEntry);
+      }
+
       const newClubId = negotiating.club.id;
       const currentMatchday = state.gameState.career.matchday;
 
@@ -252,6 +270,12 @@ export function Transfers() {
           finance: {
             ...state.gameState.finance,
             balance: state.gameState.finance.balance + requestedBonus,
+          },
+          playerCareerStats: {
+            ...state.gameState.playerCareerStats,
+            // Reset season stats for the new club
+            season: { matchesPlayed: 0, goals: 0, assists: 0, shots: 0, dribbles: 0, tackles: 0, avgRating: 0, totalRating: 0, cleanSheets: 0 },
+            seasonHistory: existingHistory,
           },
         },
       });
