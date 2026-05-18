@@ -188,6 +188,19 @@ export const useGameStore = create<GameStore>()((...a) => ({
         },
         sponsorContracts: [],
       },
+      agent: {
+        currentAgent: {
+          id: 'agent-family',
+          name: 'Papa (agent familial)',
+          tier: 'family' as const,
+          emoji: '👨‍👦',
+          commission: 0,
+          offerBonus: 1.0,
+          networkLevel: 1,
+          description: 'Pas de commission mais réseau limité.',
+        },
+        interestedClubs: [],
+      },
     };
 
     a[0]({ gameState, player });

@@ -170,13 +170,14 @@ const CHAT_DATA: Record<Contact, { messages: { text: string; effect?: number; ef
   },
   agent: {
     messages: [
-      { text: '📋 Des clubs intéressés ?', reply: 'Je sonde le marché. Continue à performer et les offres viendront.' },
+      { text: '📋 Des clubs intéressés ?', reply: '__DYNAMIC_CLUBS__' },
       { text: '💰 Je veux une augmentation', reply: 'Je vais en parler au club. Avec tes stats actuelles, c\'est jouable.' },
-      { text: '🌍 Je veux jouer à l\'étranger', reply: 'Intéressant. Je vais contacter mes réseaux en Espagne et en Angleterre.' },
+      { text: '🌍 Je veux jouer à l\'étranger', reply: 'Intéressant. Je vais contacter mes réseaux.' },
       { text: '📰 Qu\'est-ce qu\'on dit de moi ?', reply: 'La presse parle de toi en bien. Ta cote monte !' },
       { text: '🤝 Merci pour ton travail', reply: 'C\'est mon job ! On va faire de grandes choses ensemble.' },
-      { text: '📊 Quelle est ma valeur marchande ?', reply: 'Elle augmente chaque mois. Continue comme ça et les gros clubs viendront.' },
+      { text: '📊 Quelle est ma valeur marchande ?', reply: '__DYNAMIC_VALUE__' },
       { text: '🎙️ Des opportunités de sponsoring ?', reply: 'J\'ai quelques pistes. Ta visibilité sur les réseaux aide beaucoup.' },
+      { text: '🔄 Je veux changer d\'agent', reply: '__DYNAMIC_CHANGE_AGENT__' },
     ],
   },
 };
@@ -203,9 +204,9 @@ function ChatView({ contact, onBack }: { contact: Contact; onBack: () => void })
     coach: `Coach ${career.currentClub.name}`,
     locker: 'Vestiaire',
     family: 'Famille',
-    agent: 'Agent',
+    agent: gameState.agent?.currentAgent.name ?? 'Agent',
   };
-  const contactEmojis: Record<Contact, string> = { coach: '🧑‍💼', locker: '👥', family: '👨‍👩‍👦', agent: '🕴️' };
+  const contactEmojis: Record<Contact, string> = { coach: '🧑‍💼', locker: '👥', family: '👨‍👩‍👦', agent: gameState.agent?.currentAgent.emoji ?? '🕴️' };
 
   const getRelationInfo = () => {
     if (contact === 'coach') return `Relation : ${social.coachRelation}/100${isCaptain ? ' • ©️ Capitaine' : ''}`;
@@ -225,6 +226,41 @@ function ChatView({ contact, onBack }: { contact: Contact; onBack: () => void })
 
     setTimeout(() => {
       let replyText = msg.reply;
+
+      // Dynamic agent replies
+      if (contact === 'agent' && replyText === '__DYNAMIC_CLUBS__') {
+        const state = useGameStore.getState();
+        if (state.gameState?.agent) {
+          const agent = state.gameState.agent;
+          // Generate interested clubs
+          const seed = state.gameState.time.currentDate.month * 100 + state.gameState.time.currentDate.day;
+          let s = seed;
+          const rand = () => { s = (s * 1664525 + 1013904223) & 0xFFFFFFFF; return (s >>> 0) / 0xFFFFFFFF; };
+
+          const clubs = agent.interestedClubs.length > 0
+            ? agent.interestedClubs
+            : ['Aucun club pour le moment'];
+
+          if (clubs[0] === 'Aucun club pour le moment') {
+            replyText = `Pour l'instant, pas de clubs intéressés. Continue à performer et ça viendra. Mon réseau est ${agent.currentAgent.networkLevel <= 2 ? 'limité' : 'étendu'}.`;
+          } else {
+            replyText = `J'ai eu des contacts avec : ${clubs.join(', ')}. ${agent.currentAgent.tier === 'elite' ? 'Ils sont très chauds !' : 'On verra ce que ça donne au mercato.'}`;
+          }
+        } else {
+          replyText = 'Je sonde le marché. Continue à performer.';
+        }
+      } else if (contact === 'agent' && replyText === '__DYNAMIC_VALUE__') {
+        const state = useGameStore.getState();
+        if (state.gameState) {
+          const ovr = state.gameState.player.overallRating;
+          const age = state.gameState.player.age;
+          const value = Math.round(Math.pow(ovr / 60, 3) * 5_000_000 * (age <= 27 ? 1.5 : age <= 30 ? 1.2 : 0.8) / 100000) * 100000;
+          const formatted = value >= 1_000_000 ? `${(value / 1_000_000).toFixed(1)}M€` : `${Math.round(value / 1000)}K€`;
+          replyText = `Ta valeur marchande est estimée à ${formatted}. ${ovr >= 80 ? 'Les gros clubs te surveillent !' : ovr >= 70 ? 'Ça monte bien.' : 'Continue à progresser.'}`;
+        }
+      } else if (contact === 'agent' && replyText === '__DYNAMIC_CHANGE_AGENT__') {
+        replyText = 'Tu veux changer d\'agent ? Va dans Joueur → Transferts pour voir les agents disponibles.';
+      }
 
       // If asking for captain and eligible, grant it
       if (isAskingCaptain && canBecomeCaptain) {

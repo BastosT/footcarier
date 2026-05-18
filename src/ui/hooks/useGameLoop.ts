@@ -137,6 +137,32 @@ export function useGameLoop(): UseGameLoopReturn {
           });
         }
       }
+
+      // Monthly: update agent interested clubs
+      const agentState = useGameStore.getState();
+      if (agentState.gameState?.agent) {
+        const gs = agentState.gameState;
+        const agent = gs.agent!.currentAgent;
+        // Simple deterministic generation based on month
+        const seed = gs.time.currentDate.year * 12 + gs.time.currentDate.month;
+        let s = seed;
+        const rand = () => { s = (s * 1664525 + 1013904223) & 0xFFFFFFFF; return (s >>> 0) / 0xFFFFFFFF; };
+
+        const { allClubs } = require('../../data/clubs/index');
+        const eligible = (allClubs as any[]).filter((c: any) => {
+          if (c.id === gs.career.currentClub.id) return false;
+          if (c.tier === 'big' && gs.player.overallRating < 72 && agent.tier !== 'elite') return false;
+          if (c.tier === 'big' && agent.tier === 'family') return false;
+          return true;
+        });
+        const shuffled = [...eligible].sort(() => rand() - 0.5);
+        const count = agent.networkLevel + Math.floor(rand() * 2);
+        const clubs = shuffled.slice(0, count).map((c: any) => c.name);
+
+        useGameStore.setState({
+          gameState: { ...gs, agent: { ...gs.agent!, interestedClubs: clubs } },
+        });
+      }
     }
 
     return result;

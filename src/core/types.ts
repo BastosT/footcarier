@@ -619,6 +619,27 @@ export interface GameState {
   nationalTeam?: import('../systems/career/NationalTeam').NationalTeamState | null;
   domesticCup?: import('../systems/league/DomesticCup').DomesticCupState | null;
   seasonObjectives?: SeasonObjectivesState | null;
+  agent?: AgentState | null;
+}
+
+// ─── Agent ───────────────────────────────────────────────────────────────────
+
+export type AgentTier = 'family' | 'local' | 'national' | 'elite';
+
+export interface AgentProfile {
+  id: string;
+  name: string;
+  tier: AgentTier;
+  emoji: string;
+  commission: number;       // % pris sur les primes/transferts (0-20)
+  offerBonus: number;       // multiplicateur sur les offres de transfert (1.0-1.5)
+  networkLevel: number;     // 1-5, influence le nombre et la qualité des offres
+  description: string;
+}
+
+export interface AgentState {
+  currentAgent: AgentProfile;
+  interestedClubs: string[];  // noms des clubs intéressés (mis à jour chaque mois)
 }
 
 export interface SaveMetadata {
