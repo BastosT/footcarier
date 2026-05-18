@@ -420,9 +420,12 @@ export function advanceDay(
     time: newTimeState,
   };
 
-  // 2. Apply fitness recovery (+1 per day, regardless of match day — recovery happens before match)
-  const fitnessRecovery = FitnessManager.DAILY_RECOVERY;
-  const newFitness = FitnessManager.applyDailyRecovery(newGameState.player.fitness);
+  // 2. Apply fitness recovery
+  // When injured: +2 per day (resting and recovering)
+  // When healthy: +1 per day (normal recovery)
+  const isCurrentlyInjured = InjurySystem.isInjured(newGameState.player);
+  const dailyRecovery = isCurrentlyInjured ? 2 : FitnessManager.DAILY_RECOVERY;
+  const newFitness = Math.min(100, newGameState.player.fitness + dailyRecovery);
   newGameState = {
     ...newGameState,
     player: {
