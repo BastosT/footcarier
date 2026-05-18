@@ -8,6 +8,7 @@ import { useGameStore } from '../../store/gameStore';
 import { generateWeeklyShop, type ShopItem } from '../../data/lifestyle/shop';
 import { ALL_WOMEN as ALL_WOMEN_DATA } from '../../data/lifestyle/women';
 import { RelationshipSystem, GIFT_TIERS, TRAVEL_OPTIONS, THRESHOLDS } from '../../systems/social/RelationshipSystem';
+import { Blackjack } from './Blackjack';
 import { formatCurrency } from '../../utils/formatters';
 import type { OwnedItem, Relationship } from '../../core/types';
 import { ALL_CELEBRITIES, CATEGORY_LABELS, type CelebrityProfile, type CelebrityCategory } from '../../data/lifestyle/celebrities';
@@ -1824,12 +1825,43 @@ function ViePersoView() {
   const [petName, setPetName] = useState('');
   const [showPetNaming, setShowPetNaming] = useState<typeof PET_OPTIONS[0] | null>(null);
   const [casinoAmount, setCasinoAmount] = useState(1000);
+  const [showBlackjack, setShowBlackjack] = useState(false);
 
   if (!gameState) return null;
 
   const balance = gameState.finance.balance;
   const pets = gameState.lifestyle.pets ?? [];
   const casinoHistory = gameState.lifestyle.casinoHistory ?? [];
+
+  // Show Blackjack game
+  if (showBlackjack) {
+    return (
+      <div className="flex-1 overflow-y-auto pb-20">
+        <Blackjack
+          balance={balance}
+          onComplete={(profit) => {
+            const state = useGameStore.getState();
+            if (state.gameState) {
+              const bet = { id: `bet-${Date.now()}`, type: 'blackjack' as const, amount: Math.abs(profit), won: profit > 0, profit, date: state.gameState.time.currentDate };
+              useGameStore.setState({
+                gameState: {
+                  ...state.gameState,
+                  finance: { ...state.gameState.finance, balance: state.gameState.finance.balance + profit },
+                  lifestyle: { ...state.gameState.lifestyle, casinoHistory: [bet, ...(state.gameState.lifestyle.casinoHistory ?? [])].slice(0, 20) },
+                },
+              });
+            }
+            setShowBlackjack(false);
+            if (profit > 0) setMessage(`🃏 Blackjack : +${formatCurrency(profit)}`);
+            else if (profit < 0) setMessage(`🃏 Blackjack : ${formatCurrency(profit)}`);
+            else setMessage('🃏 Égalité — mise remboursée');
+            setTimeout(() => setMessage(null), 3000);
+          }}
+          onCancel={() => setShowBlackjack(false)}
+        />
+      </div>
+    );
+  }
 
   // ─── Pet purchase ──────────────────────────────────────────────────────────
 
@@ -2009,13 +2041,13 @@ function ViePersoView() {
               <p className="text-[10px] text-text-muted">×2 (45%)</p>
             </button>
             <button
-              onClick={() => handleCasinoBet('blackjack')}
-              disabled={balance < casinoAmount}
+              onClick={() => setShowBlackjack(true)}
+              disabled={balance < 1000}
               className="py-3 bg-green-500/20 border border-green-500/30 rounded-xl text-center active:scale-95 transition-all"
             >
               <span className="text-xl">🃏</span>
               <p className="text-[10px] text-text mt-1">Blackjack</p>
-              <p className="text-[10px] text-text-muted">×2 (48%)</p>
+              <p className="text-[10px] text-text-muted">Vrai jeu !</p>
             </button>
             <button
               onClick={() => handleCasinoBet('sports_bet')}
