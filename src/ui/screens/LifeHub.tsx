@@ -929,6 +929,9 @@ function TinderSwipe() {
 function RelationshipDashboard({ relationship }: { relationship: Relationship }) {
   const gameState = useGameStore((s) => s.gameState);
   const [message, setMessage] = useState<string | null>(null);
+  const [showBabyNaming, setShowBabyNaming] = useState(false);
+  const [babyName, setBabyName] = useState('');
+  const [babyGender, setBabyGender] = useState<'boy' | 'girl'>('boy');
 
   if (!gameState) return null;
 
@@ -1124,6 +1127,95 @@ function RelationshipDashboard({ relationship }: { relationship: Relationship })
 
   return (
     <div className="flex-1 overflow-y-auto px-4 py-4 pb-20">
+      {/* Baby naming modal */}
+      {showBabyNaming && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-surface rounded-2xl p-6 w-full max-w-sm">
+            <p className="text-4xl text-center mb-3">👶</p>
+            <h3 className="text-lg font-bold text-text text-center mb-4">Nouveau bébé !</h3>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs text-text-muted mb-1 block">Genre</label>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setBabyGender('boy')}
+                    className={`flex-1 py-2 rounded-lg text-sm font-bold ${babyGender === 'boy' ? 'bg-blue-500 text-white' : 'bg-surface-light text-text-muted'}`}
+                  >
+                    👦 Garçon
+                  </button>
+                  <button
+                    onClick={() => setBabyGender('girl')}
+                    className={`flex-1 py-2 rounded-lg text-sm font-bold ${babyGender === 'girl' ? 'bg-pink-500 text-white' : 'bg-surface-light text-text-muted'}`}
+                  >
+                    👧 Fille
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs text-text-muted mb-1 block">Prénom</label>
+                <input
+                  type="text"
+                  value={babyName}
+                  onChange={(e) => setBabyName(e.target.value)}
+                  placeholder="Choisis un prénom..."
+                  className="w-full px-4 py-3 bg-background border border-surface-light rounded-lg text-text text-center"
+                  maxLength={20}
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowBabyNaming(false)}
+                  className="flex-1 py-3 bg-surface-light text-text-muted font-semibold rounded-xl active:scale-95"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={() => {
+                    if (!babyName.trim()) return;
+                    const state = useGameStore.getState();
+                    if (!state.gameState) return;
+
+                    const newChild = {
+                      id: `child-${Date.now()}`,
+                      firstName: babyName.trim(),
+                      gender: babyGender,
+                      birthDate: state.gameState.time.currentDate,
+                    };
+
+                    const children = state.gameState.lifestyle.relationships.children ?? [];
+
+                    useGameStore.setState({
+                      gameState: {
+                        ...state.gameState,
+                        lifestyle: {
+                          ...state.gameState.lifestyle,
+                          relationships: {
+                            ...state.gameState.lifestyle.relationships,
+                            children: [...children, newChild],
+                          },
+                        },
+                      },
+                    });
+
+                    setShowBabyNaming(false);
+                    setBabyName('');
+                    setMessage(`🎉 Félicitations ! ${babyName.trim()} est né${babyGender === 'girl' ? 'e' : ''} !`);
+                    setTimeout(() => setMessage(null), 5000);
+                  }}
+                  disabled={!babyName.trim()}
+                  className={`flex-1 py-3 font-semibold rounded-xl active:scale-95 ${babyName.trim() ? 'bg-pink-500 text-white' : 'bg-surface-light text-text-muted'}`}
+                >
+                  Confirmer 👶
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {message && (
         <div className="bg-surface rounded-xl p-3 mb-4 text-center text-sm text-text font-medium">
           {message}
@@ -1264,6 +1356,20 @@ function RelationshipDashboard({ relationship }: { relationship: Relationship })
               </button>
             )}
 
+            {/* Avoir un enfant (fiancés ou mariés) */}
+            {(relationship.status === 'engaged' || relationship.status === 'married') && (
+              <button
+                onClick={() => setShowBabyNaming(true)}
+                className="w-full bg-pink-500/10 rounded-xl p-3 border border-pink-500/30 flex items-center gap-3 active:scale-[0.98] transition-all"
+              >
+                <span className="text-2xl">👶</span>
+                <div className="flex-1 text-left">
+                  <p className="text-sm font-medium text-pink-400">Avoir un enfant</p>
+                  <p className="text-xs text-text-muted">Agrandir la famille</p>
+                </div>
+              </button>
+            )}
+
             {/* Rupture */}
             <button
               onClick={handleBreakUp}
@@ -1278,6 +1384,30 @@ function RelationshipDashboard({ relationship }: { relationship: Relationship })
           </div>
         </div>
       </div>
+
+      {/* Enfants */}
+      {(gameState.lifestyle.relationships.children ?? []).length > 0 && (
+        <div className="mt-6">
+          <h4 className="text-sm font-bold text-text mb-2">👨‍👩‍👧‍👦 Mes enfants</h4>
+          <div className="space-y-2">
+            {(gameState.lifestyle.relationships.children ?? []).map((child) => {
+              const childAge = currentDate.year - child.birthDate.year;
+              return (
+                <div key={child.id} className="bg-surface rounded-xl p-3 border border-surface-light flex items-center gap-3">
+                  <span className="text-2xl">{child.gender === 'boy' ? '👦' : '👧'}</span>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-text">{child.firstName}</p>
+                    <p className="text-xs text-text-muted">
+                      {childAge <= 0 ? 'Nouveau-né' : `${childAge} an${childAge > 1 ? 's' : ''}`}
+                    </p>
+                  </div>
+                  <span className="text-xs text-text-muted">Né le {child.birthDate.day}/{child.birthDate.month}/{child.birthDate.year}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Historique */}
       {gameState.lifestyle.relationships.history.length > 0 && (

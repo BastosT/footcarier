@@ -494,6 +494,14 @@ export interface RelationshipHistoryEntry {
 export interface RelationshipState {
   current: Relationship | null;
   history: RelationshipHistoryEntry[];
+  children: Child[];
+}
+
+export interface Child {
+  id: string;
+  firstName: string;
+  gender: 'boy' | 'girl';
+  birthDate: GameDate;
 }
 
 // ─── Relations Célébrités ────────────────────────────────────────────────────

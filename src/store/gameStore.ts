@@ -175,6 +175,7 @@ export const useGameStore = create<GameStore>()((...a) => ({
         relationships: {
           current: null,
           history: [],
+          children: [],
         },
         celebrities: {
           relations: [],
