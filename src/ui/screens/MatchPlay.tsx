@@ -25,6 +25,10 @@ import {
   type ActionDifficulty,
 } from '../../systems/match/MatchSimulator';
 import { MATCH_FITNESS_LOSS } from '../../systems/match/FitnessManager';
+import { simulateMatchday } from '../../systems/league/LeagueEngine';
+import { StandingsCalculator } from '../../systems/league/StandingsCalculator';
+import { accumulateGoals } from '../../systems/league/TopScorers';
+import { allClubs as allClubsData } from '../../data/clubs/index';
 import { createRNG } from '../../utils/random';
 import { clamp } from '../../utils/math';
 import { updateCareerStatsFromMatch } from '../../utils/updateCareerStats';
@@ -369,9 +373,94 @@ export function MatchPlay() {
       timing: (r.chosenDifficulty === 'risky' ? 'perfect' : 'good') as 'perfect' | 'good' | 'miss',
     }));
 
-    // Use the pending match config to run the orchestrator's playMatch
+    // Use the pending match config to update standings with the ACTUAL interactive result
     if (pendingMatchConfig) {
-      playMatch(pendingMatchConfig, playerInputs);
+      // Build the actual match result from the interactive play
+      const actualResult = {
+        matchday: pendingMatchConfig.matchday,
+        homeTeamId: pendingMatchConfig.homeTeam.id,
+        awayTeamId: pendingMatchConfig.awayTeam.id,
+        homeGoals: matchState.homeGoals,
+        awayGoals: matchState.awayGoals,
+        playerPerformance: {
+          rating: matchSummary.playerRating,
+          goals: matchSummary.playerGoals,
+          assists: matchSummary.playerAssists,
+          minutesPlayed: matchSummary.minutesPlayed,
+          shots: matchSummary.playerShots,
+          passAccuracy: matchSummary.playerPassAccuracy,
+          dribbles: matchSummary.playerDribbles,
+          tackles: matchSummary.playerTackles,
+        },
+      };
+
+      // Directly update the state with the correct interactive result
+      const state = useGameStore.getState();
+      if (state.gameState) {
+        const gs = state.gameState;
+        const playerClubId = gs.career.currentClub.id;
+        const rng = createRNG(Date.now());
+
+        // Build clubs lookup
+        const clubsLookup = new Map<string, any>();
+        for (const c of allClubsData) clubsLookup.set(c.id, c);
+        clubsLookup.set(gs.career.currentClub.id, gs.career.currentClub);
+
+        // Simulate other matches (excluding player's) and update standings
+        const updatedLeagues = gs.leagues.map((league: any) => {
+          const isPlayerLeague = league.division.country === gs.career.currentClub.country &&
+            league.division.level === gs.career.currentClub.division.level;
+
+          const matchdayResult = simulateMatchday(
+            pendingMatchConfig.matchday, [league], clubsLookup, rng, isPlayerLeague ? playerClubId : undefined
+          );
+
+          if (isPlayerLeague) {
+            const allNewResults = [...matchdayResult.results, actualResult];
+            const allLeagueResults = [...league.results, ...allNewResults];
+            const clubs = league.standings.map((s: any) => ({
+              id: s.clubId, name: s.clubName, country: league.division.country,
+              division: league.division, tier: 'medium', squad: [], finances: { budget: 0, wageBill: 0 }, stadium: '', colors: { primary: '#000', secondary: '#fff' },
+            }));
+            const recalcStandings = StandingsCalculator.calculateFromResults(allLeagueResults, clubs);
+            // Add player goals to top scorers
+            const playerGoalEvents = [];
+            if (actualResult.playerPerformance.goals > 0 || actualResult.playerPerformance.assists > 0) {
+              playerGoalEvents.push({
+                playerId: gs.player.id,
+                playerName: `${gs.player.firstName} ${gs.player.lastName}`,
+                clubId: playerClubId,
+                clubName: gs.career.currentClub.name,
+                goals: actualResult.playerPerformance.goals,
+                assists: actualResult.playerPerformance.assists,
+              });
+            }
+            const topScorersWithPlayer = accumulateGoals(matchdayResult.updatedTopScorers, playerGoalEvents);
+            return { ...league, results: allLeagueResults, standings: recalcStandings, topScorers: topScorersWithPlayer };
+          } else {
+            const allLeagueResults = [...league.results, ...matchdayResult.results];
+            const clubs = league.standings.map((s: any) => ({
+              id: s.clubId, name: s.clubName, country: league.division.country,
+              division: league.division, tier: 'medium', squad: [], finances: { budget: 0, wageBill: 0 }, stadium: '', colors: { primary: '#000', secondary: '#fff' },
+            }));
+            const recalcStandings = StandingsCalculator.calculateFromResults(allLeagueResults, clubs);
+            return { ...league, results: allLeagueResults, standings: recalcStandings, topScorers: matchdayResult.updatedTopScorers };
+          }
+        });
+
+        // Apply fitness loss
+        const fitnessLoss = 15 + Math.floor(Math.random() * 15);
+        const newFitness = Math.max(0, gs.player.fitness - fitnessLoss);
+
+        useGameStore.setState({
+          gameState: {
+            ...gs,
+            player: { ...gs.player, fitness: newFitness },
+            leagues: updatedLeagues,
+            career: { ...gs.career, matchday: pendingMatchConfig.matchday },
+          },
+        });
+      }
       setPendingMatchConfig(null);
     } else {
       const updatedPlayer = {
