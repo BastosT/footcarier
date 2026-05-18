@@ -194,7 +194,7 @@ export const useGameStore = create<GameStore>()((...a) => ({
         currentAgent: {
           id: 'agent-family',
           name: 'Papa (agent familial)',
-          tier: 'family' as const,
+          tier: 'family',
           emoji: '👨‍👦',
           commission: 0,
           offerBonus: 1.0,

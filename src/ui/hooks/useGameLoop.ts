@@ -21,6 +21,7 @@ import {
 } from '../../core/GameLoopOrchestrator';
 import type { MatchConfig, PlayerInput, TrainingSkill, TrainingResult } from '../../core/types';
 import { createRNG } from '../../utils/random';
+import { allClubs } from '../../data/clubs/index';
 
 export interface UseGameLoopReturn {
   /** Advance the game by one day */
@@ -148,8 +149,7 @@ export function useGameLoop(): UseGameLoopReturn {
         let s = seed;
         const rand = () => { s = (s * 1664525 + 1013904223) & 0xFFFFFFFF; return (s >>> 0) / 0xFFFFFFFF; };
 
-        const { allClubs } = require('../../data/clubs/index');
-        const eligible = (allClubs as any[]).filter((c: any) => {
+        const eligible = allClubs.filter((c) => {
           if (c.id === gs.career.currentClub.id) return false;
           if (c.tier === 'big' && gs.player.overallRating < 72 && agent.tier !== 'elite') return false;
           if (c.tier === 'big' && agent.tier === 'family') return false;
@@ -157,7 +157,7 @@ export function useGameLoop(): UseGameLoopReturn {
         });
         const shuffled = [...eligible].sort(() => rand() - 0.5);
         const count = agent.networkLevel + Math.floor(rand() * 2);
-        const clubs = shuffled.slice(0, count).map((c: any) => c.name);
+        const clubs = shuffled.slice(0, count).map((c) => c.name);
 
         useGameStore.setState({
           gameState: { ...gs, agent: { ...gs.agent!, interestedClubs: clubs } },
