@@ -1,33 +1,44 @@
 /**
- * ClubSelection - Écran de sélection de club avec filtrage par pays et tier.
+ * ClubSelection — 4 offres de petits clubs (1 par pays au hasard).
+ * Le joueur débute en bas et doit gravir les échelons.
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigation } from '../hooks/useNavigation';
 import { useGameStore } from '../../store/gameStore';
-import { allClubs, clubsByCountry } from '../../data/clubs/index';
-import type { Club, Country, ClubTier } from '../../core/types';
+import { clubsByCountry } from '../../data/clubs/index';
+import type { Club, Country } from '../../core/types';
 
-const COUNTRY_LABELS: Record<Country, { label: string; flag: string }> = {
-  france: { label: 'France', flag: '🇫🇷' },
-  spain: { label: 'Espagne', flag: '🇪🇸' },
-  england: { label: 'Angleterre', flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿' },
-  italy: { label: 'Italie', flag: '🇮🇹' },
-  germany: { label: 'Allemagne', flag: '🇩🇪' },
-};
-
-const TIER_LABELS: Record<ClubTier, { label: string; color: string }> = {
-  big: { label: '⭐ Grand club', color: 'text-accent' },
-  medium: { label: '🔵 Club moyen', color: 'text-primary-light' },
-  small: { label: '🟢 Petit club', color: 'text-secondary-light' },
+const COUNTRY_INFO: Record<Country, { label: string; flag: string; league: string }> = {
+  france: { label: 'France', flag: '🇫🇷', league: 'Ligue 1' },
+  spain: { label: 'Espagne', flag: '🇪🇸', league: 'La Liga' },
+  england: { label: 'Angleterre', flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', league: 'Premier League' },
+  italy: { label: 'Italie', flag: '🇮🇹', league: 'Serie A' },
+  germany: { label: 'Allemagne', flag: '🇩🇪', league: 'Bundesliga' },
 };
 
 export function ClubSelection() {
   const { goToScreen } = useNavigation();
-  const [selectedCountry, setSelectedCountry] = useState<Country>('france');
   const [selectedClub, setSelectedClub] = useState<Club | null>(null);
 
-  const clubs = clubsByCountry[selectedCountry];
+  // Generate 4 random small/medium club offers (1 per country, pick 4 countries)
+  const offers = useMemo(() => {
+    const countries: Country[] = ['france', 'spain', 'england', 'italy', 'germany'];
+    // Shuffle and pick 4
+    const shuffled = [...countries].sort(() => Math.random() - 0.5);
+    const selected = shuffled.slice(0, 4);
+
+    return selected.map((country) => {
+      const clubs = clubsByCountry[country];
+      // Pick only small clubs (last ones in the list, lower tier)
+      const smallClubs = clubs.filter((c) => c.tier === 'small');
+      const mediumClubs = clubs.filter((c) => c.tier === 'medium');
+      // Prefer small, fallback to medium
+      const pool = smallClubs.length > 0 ? smallClubs : mediumClubs;
+      const club = pool[Math.floor(Math.random() * pool.length)];
+      return { country, club };
+    });
+  }, []);
 
   const handleConfirm = () => {
     if (!selectedClub) return;
@@ -38,79 +49,61 @@ export function ClubSelection() {
   return (
     <div className="min-h-dvh flex flex-col bg-background p-6">
       <header className="mb-6">
-        <h1 className="text-3xl font-bold text-text">Choisis ton club</h1>
-        <p className="text-text-muted mt-1">Sélectionne le club où tu débuteras ta carrière</p>
+        <h1 className="text-2xl font-bold text-text">📋 Offres de clubs</h1>
+        <p className="text-text-muted text-sm mt-1">
+          En tant que jeune joueur, voici les clubs qui te proposent un contrat
+        </p>
       </header>
 
-      {/* Country filter */}
-      <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-        {(Object.keys(COUNTRY_LABELS) as Country[]).map((country) => (
-          <button
-            key={country}
-            onClick={() => { setSelectedCountry(country); setSelectedClub(null); }}
-            className={`px-4 py-2 rounded-lg whitespace-nowrap transition-all
-              ${selectedCountry === country
-                ? 'bg-primary text-white'
-                : 'bg-surface text-text-muted hover:bg-surface-light'
-              }`}
-          >
-            {COUNTRY_LABELS[country].flag} {COUNTRY_LABELS[country].label}
-          </button>
-        ))}
-      </div>
+      {/* Offers */}
+      <div className="flex-1 space-y-3 mb-6">
+        {offers.map(({ country, club }) => {
+          if (!club) return null;
+          const info = COUNTRY_INFO[country];
+          const isSelected = selectedClub?.id === club.id;
 
-      {/* Club list */}
-      <div className="flex-1 overflow-y-auto space-y-3 mb-6">
-        {clubs.map((club) => (
-          <button
-            key={club.id}
-            onClick={() => setSelectedClub(club)}
-            className={`w-full p-4 rounded-xl text-left transition-all
-              ${selectedClub?.id === club.id
-                ? 'bg-primary/20 border-2 border-primary-light'
-                : 'bg-surface border border-surface-light hover:bg-surface-light'
+          return (
+            <button
+              key={club.id}
+              onClick={() => setSelectedClub(club)}
+              className={`w-full p-4 rounded-xl text-left transition-all ${
+                isSelected
+                  ? 'bg-primary/20 border-2 border-primary-light'
+                  : 'bg-surface border border-surface-light/50 active:scale-[0.98]'
               }`}
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-bold text-text">{club.name}</h3>
-                <p className="text-sm text-text-muted">
-                  {club.division.name} • {club.stadium}
-                </p>
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-surface-light rounded-lg flex items-center justify-center">
+                  <span className="text-xl">{info.flag}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-bold text-text">{club.name}</h3>
+                  <p className="text-xs text-text-muted">{info.league} • {club.stadium}</p>
+                </div>
+                <div className="text-right">
+                  <div className="flex gap-1">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: club.colors.primary }} />
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: club.colors.secondary }} />
+                  </div>
+                  <p className="text-[10px] text-text-muted mt-1">{club.squad.length} joueurs</p>
+                </div>
               </div>
-              <div className="text-right">
-                <span className={`text-sm font-medium ${TIER_LABELS[club.tier].color}`}>
-                  {TIER_LABELS[club.tier].label}
-                </span>
-                <p className="text-xs text-text-muted mt-1">
-                  {club.squad.length} joueurs
-                </p>
-              </div>
-            </div>
-            {/* Club colors indicator */}
-            <div className="flex gap-1 mt-2">
-              <div
-                className="w-4 h-4 rounded-full border border-white/20"
-                style={{ backgroundColor: club.colors.primary }}
-              />
-              <div
-                className="w-4 h-4 rounded-full border border-white/20"
-                style={{ backgroundColor: club.colors.secondary }}
-              />
-            </div>
-          </button>
-        ))}
+            </button>
+          );
+        })}
       </div>
 
       {/* Confirm */}
       <button
         onClick={handleConfirm}
         disabled={!selectedClub}
-        className="w-full py-4 px-6 bg-secondary text-white font-semibold rounded-xl
-                   hover:bg-secondary-light active:scale-95 transition-all duration-200
-                   text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+        className={`w-full py-4 px-6 font-bold rounded-xl active:scale-95 transition-all text-lg ${
+          selectedClub
+            ? 'bg-primary text-white'
+            : 'bg-surface-light text-text-muted'
+        }`}
       >
-        {selectedClub ? `Rejoindre ${selectedClub.name}` : 'Sélectionne un club'}
+        {selectedClub ? `Signer à ${selectedClub.name}` : 'Choisis un club'}
       </button>
     </div>
   );
