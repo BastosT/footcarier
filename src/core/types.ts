@@ -525,10 +525,32 @@ export interface SponsorContract {
   id: string;
   brand: string;
   emoji: string;
-  monthlyPay: number;       // paiement mensuel en €
+  monthlyPay: number;
   startDate: GameDate;
-  durationMonths: number;   // durée en mois
+  durationMonths: number;
   monthsRemaining: number;
+}
+
+// ─── Animaux de compagnie ────────────────────────────────────────────────────
+
+export interface Pet {
+  id: string;
+  name: string;
+  type: 'dog' | 'cat';
+  breed: string;
+  emoji: string;
+  purchaseDate: GameDate;
+}
+
+// ─── Casino ──────────────────────────────────────────────────────────────────
+
+export interface CasinoBet {
+  id: string;
+  type: 'roulette' | 'blackjack' | 'sports_bet';
+  amount: number;
+  won: boolean;
+  profit: number;
+  date: GameDate;
 }
 
 export interface LifestyleState {
@@ -539,6 +561,8 @@ export interface LifestyleState {
   relationships: RelationshipState;
   celebrities: CelebrityRelationsState;
   sponsorContracts: SponsorContract[];
+  pets: Pet[];
+  casinoHistory: CasinoBet[];
 }
 
 export interface Investment {

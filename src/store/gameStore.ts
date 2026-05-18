@@ -187,6 +187,8 @@ export const useGameStore = create<GameStore>()((...a) => ({
           relations: [],
         },
         sponsorContracts: [],
+        pets: [],
+        casinoHistory: [],
       },
       agent: {
         currentAgent: {

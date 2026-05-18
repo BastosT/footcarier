@@ -12,7 +12,7 @@ import { formatCurrency } from '../../utils/formatters';
 import type { OwnedItem, Relationship } from '../../core/types';
 import { ALL_CELEBRITIES, CATEGORY_LABELS, type CelebrityProfile, type CelebrityCategory } from '../../data/lifestyle/celebrities';
 
-type LifeTab = 'shop' | 'possessions' | 'invest' | 'finance' | 'trophies' | 'relations' | 'celebs';
+type LifeTab = 'shop' | 'possessions' | 'invest' | 'finance' | 'trophies' | 'relations' | 'celebs' | 'perso';
 
 export function LifeHub() {
   const [activeTab, setActiveTab] = useState<LifeTab>('shop');
@@ -32,6 +32,7 @@ export function LifeHub() {
           { id: 'trophies' as LifeTab, label: '🏆 Trophées' },
           { id: 'relations' as LifeTab, label: '❤️ Relations' },
           { id: 'celebs' as LifeTab, label: '⭐ Célébrités' },
+          { id: 'perso' as LifeTab, label: '🎲 Vie Perso' },
         ]).map((tab) => (
           <button
             key={tab.id}
@@ -55,6 +56,7 @@ export function LifeHub() {
       {activeTab === 'trophies' && <TrophiesView />}
       {activeTab === 'relations' && <RelationsView />}
       {activeTab === 'celebs' && <CelebritiesView />}
+      {activeTab === 'perso' && <ViePersoView />}
     </div>
   );
 }
@@ -1797,6 +1799,251 @@ function CelebritiesView() {
                   <span className="text-[10px] text-red-400 font-bold">{celeb.popularityRequired}+ pop.</span>
                 </div>
               ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Vie Perso (Pets, Casino, Events) ────────────────────────────────────────
+
+const PET_OPTIONS = [
+  { type: 'dog' as const, breed: 'Golden Retriever', emoji: '🐕', price: 2000 },
+  { type: 'dog' as const, breed: 'Berger Allemand', emoji: '🐕‍🦺', price: 2500 },
+  { type: 'dog' as const, breed: 'Bouledogue Français', emoji: '🐶', price: 3000 },
+  { type: 'dog' as const, breed: 'Husky', emoji: '🐺', price: 2800 },
+  { type: 'cat' as const, breed: 'British Shorthair', emoji: '🐱', price: 1500 },
+  { type: 'cat' as const, breed: 'Maine Coon', emoji: '🐈', price: 2000 },
+  { type: 'cat' as const, breed: 'Bengal', emoji: '🐆', price: 3500 },
+];
+
+function ViePersoView() {
+  const gameState = useGameStore((s) => s.gameState);
+  const [message, setMessage] = useState<string | null>(null);
+  const [petName, setPetName] = useState('');
+  const [showPetNaming, setShowPetNaming] = useState<typeof PET_OPTIONS[0] | null>(null);
+  const [casinoAmount, setCasinoAmount] = useState(1000);
+
+  if (!gameState) return null;
+
+  const balance = gameState.finance.balance;
+  const pets = gameState.lifestyle.pets ?? [];
+  const casinoHistory = gameState.lifestyle.casinoHistory ?? [];
+
+  // ─── Pet purchase ──────────────────────────────────────────────────────────
+
+  const handleBuyPet = () => {
+    if (!showPetNaming || !petName.trim()) return;
+    const state = useGameStore.getState();
+    if (!state.gameState) return;
+
+    if (state.gameState.finance.balance < showPetNaming.price) {
+      setMessage('❌ Pas assez d\'argent !');
+      setTimeout(() => setMessage(null), 2000);
+      return;
+    }
+
+    const newPet = {
+      id: `pet-${Date.now()}`,
+      name: petName.trim(),
+      type: showPetNaming.type,
+      breed: showPetNaming.breed,
+      emoji: showPetNaming.emoji,
+      purchaseDate: state.gameState.time.currentDate,
+    };
+
+    useGameStore.setState({
+      gameState: {
+        ...state.gameState,
+        finance: { ...state.gameState.finance, balance: state.gameState.finance.balance - showPetNaming.price },
+        lifestyle: { ...state.gameState.lifestyle, pets: [...(state.gameState.lifestyle.pets ?? []), newPet] },
+      },
+    });
+
+    setShowPetNaming(null);
+    setPetName('');
+    setMessage(`🎉 ${petName.trim()} a rejoint la famille !`);
+    setTimeout(() => setMessage(null), 3000);
+  };
+
+  // ─── Casino ────────────────────────────────────────────────────────────────
+
+  const handleCasinoBet = (type: 'roulette' | 'blackjack' | 'sports_bet') => {
+    const state = useGameStore.getState();
+    if (!state.gameState) return;
+
+    if (state.gameState.finance.balance < casinoAmount) {
+      setMessage('❌ Pas assez d\'argent !');
+      setTimeout(() => setMessage(null), 2000);
+      return;
+    }
+
+    // Win probability: roulette 45%, blackjack 48%, sports bet 40%
+    const winChance = type === 'blackjack' ? 0.48 : type === 'roulette' ? 0.45 : 0.40;
+    // Payout: roulette 2x, blackjack 2x, sports bet 3x
+    const multiplier = type === 'sports_bet' ? 3 : 2;
+
+    const won = Math.random() < winChance;
+    const profit = won ? casinoAmount * (multiplier - 1) : -casinoAmount;
+
+    const bet = {
+      id: `bet-${Date.now()}`,
+      type,
+      amount: casinoAmount,
+      won,
+      profit,
+      date: state.gameState.time.currentDate,
+    };
+
+    useGameStore.setState({
+      gameState: {
+        ...state.gameState,
+        finance: { ...state.gameState.finance, balance: state.gameState.finance.balance + profit },
+        lifestyle: { ...state.gameState.lifestyle, casinoHistory: [bet, ...(state.gameState.lifestyle.casinoHistory ?? [])].slice(0, 20) },
+      },
+    });
+
+    if (won) {
+      setMessage(`🎰 GAGNÉ ! +${formatCurrency(casinoAmount * (multiplier - 1))}`);
+    } else {
+      setMessage(`💸 Perdu... -${formatCurrency(casinoAmount)}`);
+    }
+    setTimeout(() => setMessage(null), 3000);
+  };
+
+  // ─── Render ────────────────────────────────────────────────────────────────
+
+  return (
+    <div className="flex-1 overflow-y-auto px-4 py-4 pb-20">
+      {message && (
+        <div className="bg-surface rounded-xl p-3 mb-4 text-center text-sm text-text font-medium">{message}</div>
+      )}
+
+      {/* Pet naming modal */}
+      {showPetNaming && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-surface rounded-2xl p-6 w-full max-w-sm">
+            <p className="text-4xl text-center mb-2">{showPetNaming.emoji}</p>
+            <h3 className="text-lg font-bold text-text text-center mb-1">{showPetNaming.breed}</h3>
+            <p className="text-xs text-text-muted text-center mb-4">{formatCurrency(showPetNaming.price)}</p>
+            <input
+              type="text"
+              value={petName}
+              onChange={(e) => setPetName(e.target.value)}
+              placeholder="Nom de ton animal..."
+              className="w-full px-4 py-3 bg-background border border-surface-light rounded-lg text-text text-center mb-4"
+              maxLength={15}
+            />
+            <div className="flex gap-2">
+              <button onClick={() => setShowPetNaming(null)} className="flex-1 py-3 bg-surface-light text-text-muted font-semibold rounded-xl active:scale-95">Annuler</button>
+              <button onClick={handleBuyPet} disabled={!petName.trim()} className={`flex-1 py-3 font-semibold rounded-xl active:scale-95 ${petName.trim() ? 'bg-primary text-white' : 'bg-surface-light text-text-muted'}`}>Adopter</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* My Pets */}
+      {pets.length > 0 && (
+        <div className="mb-6">
+          <h3 className="text-sm font-bold text-text mb-2">🐾 Mes animaux</h3>
+          <div className="space-y-2">
+            {pets.map((pet) => (
+              <div key={pet.id} className="bg-surface rounded-xl p-3 border border-surface-light/50 flex items-center gap-3">
+                <span className="text-2xl">{pet.emoji}</span>
+                <div>
+                  <p className="text-sm font-bold text-text">{pet.name}</p>
+                  <p className="text-xs text-text-muted">{pet.breed}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Adopt a pet */}
+      <div className="mb-6">
+        <h3 className="text-sm font-bold text-text mb-2">🐾 Adopter un animal</h3>
+        <div className="grid grid-cols-2 gap-2">
+          {PET_OPTIONS.map((pet, idx) => (
+            <button
+              key={idx}
+              onClick={() => { setShowPetNaming(pet); setPetName(''); }}
+              disabled={balance < pet.price}
+              className={`bg-surface rounded-xl p-3 border border-surface-light/50 text-center transition-all ${balance >= pet.price ? 'active:scale-95' : 'opacity-50'}`}
+            >
+              <span className="text-2xl">{pet.emoji}</span>
+              <p className="text-xs font-medium text-text mt-1">{pet.breed}</p>
+              <p className="text-xs text-primary-light font-bold">{formatCurrency(pet.price)}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Casino */}
+      <div className="mb-6">
+        <h3 className="text-sm font-bold text-text mb-2">🎰 Casino & Paris</h3>
+        <div className="bg-surface rounded-xl p-4 border border-surface-light/50">
+          <div className="mb-3">
+            <label className="text-xs text-text-muted mb-1 block">Mise</label>
+            <div className="flex gap-2">
+              {[1000, 5000, 10000, 50000, 100000].map((amount) => (
+                <button
+                  key={amount}
+                  onClick={() => setCasinoAmount(amount)}
+                  className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold ${casinoAmount === amount ? 'bg-primary text-white' : 'bg-surface-light text-text-muted'}`}
+                >
+                  {amount >= 1000 ? `${amount / 1000}K` : amount}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              onClick={() => handleCasinoBet('roulette')}
+              disabled={balance < casinoAmount}
+              className="py-3 bg-red-500/20 border border-red-500/30 rounded-xl text-center active:scale-95 transition-all"
+            >
+              <span className="text-xl">🎰</span>
+              <p className="text-[10px] text-text mt-1">Roulette</p>
+              <p className="text-[10px] text-text-muted">×2 (45%)</p>
+            </button>
+            <button
+              onClick={() => handleCasinoBet('blackjack')}
+              disabled={balance < casinoAmount}
+              className="py-3 bg-green-500/20 border border-green-500/30 rounded-xl text-center active:scale-95 transition-all"
+            >
+              <span className="text-xl">🃏</span>
+              <p className="text-[10px] text-text mt-1">Blackjack</p>
+              <p className="text-[10px] text-text-muted">×2 (48%)</p>
+            </button>
+            <button
+              onClick={() => handleCasinoBet('sports_bet')}
+              disabled={balance < casinoAmount}
+              className="py-3 bg-blue-500/20 border border-blue-500/30 rounded-xl text-center active:scale-95 transition-all"
+            >
+              <span className="text-xl">⚽</span>
+              <p className="text-[10px] text-text mt-1">Paris sport</p>
+              <p className="text-[10px] text-text-muted">×3 (40%)</p>
+            </button>
+          </div>
+          <p className="text-xs text-text-muted text-center mt-2">Solde : {formatCurrency(balance)}</p>
+        </div>
+      </div>
+
+      {/* Casino history */}
+      {casinoHistory.length > 0 && (
+        <div className="mb-6">
+          <h3 className="text-xs font-bold text-text-muted mb-2">Historique paris</h3>
+          <div className="space-y-1">
+            {casinoHistory.slice(0, 5).map((bet) => (
+              <div key={bet.id} className="flex items-center justify-between py-1 px-2 bg-surface rounded-lg">
+                <span className="text-xs text-text-muted">{bet.type === 'roulette' ? '🎰' : bet.type === 'blackjack' ? '🃏' : '⚽'} {formatCurrency(bet.amount)}</span>
+                <span className={`text-xs font-bold ${bet.won ? 'text-green-400' : 'text-red-400'}`}>
+                  {bet.won ? `+${formatCurrency(bet.profit)}` : formatCurrency(bet.profit)}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       )}

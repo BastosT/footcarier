@@ -121,13 +121,49 @@ export function SeasonEnd() {
     // Age the player by 1 year
     const newAge = state.gameState.player.age + 1;
 
+    // Decline after 32: stats decrease by 1-2 per year
+    let declinedStats = { ...state.gameState.player.stats };
+    if (newAge >= 32) {
+      const declineAmount = newAge >= 35 ? 3 : newAge >= 33 ? 2 : 1;
+      declinedStats = {
+        pace: Math.max(30, declinedStats.pace - declineAmount - Math.floor(Math.random() * 2)),
+        shooting: Math.max(30, declinedStats.shooting - Math.floor(Math.random() * declineAmount)),
+        passing: Math.max(30, declinedStats.passing - Math.floor(Math.random() * declineAmount)),
+        dribbling: Math.max(30, declinedStats.dribbling - declineAmount),
+        defending: Math.max(30, declinedStats.defending - Math.floor(Math.random() * declineAmount)),
+        physical: Math.max(30, declinedStats.physical - declineAmount - Math.floor(Math.random() * 2)),
+      };
+    }
+
+    // Check for forced retirement (age 38+ or all stats below 45)
+    const avgStat = Object.values(declinedStats).reduce((a, b) => a + b, 0) / 6;
+    const forceRetirement = newAge >= 38 || (newAge >= 35 && avgStat < 50);
+
+    if (forceRetirement) {
+      // Navigate to retirement screen
+      useGameStore.setState({
+        gameState: {
+          ...state.gameState,
+          player: { ...state.gameState.player, age: newAge, stats: declinedStats },
+        },
+      });
+      goToScreen('main'); // Will be handled by retirement check
+      return;
+    }
+
     // Decrease contract remaining
     const newSeasonsRemaining = Math.max(0, state.gameState.career.contract.seasonsRemaining - 1);
+
+    // Recalculate OVR after decline
+    const newOVR = Math.round(
+      (declinedStats.pace + declinedStats.shooting + declinedStats.passing +
+       declinedStats.dribbling + declinedStats.defending + declinedStats.physical) / 6
+    );
 
     useGameStore.setState({
       gameState: {
         ...state.gameState,
-        player: { ...state.gameState.player, age: newAge, fitness: 100, morale: 70 },
+        player: { ...state.gameState.player, age: newAge, fitness: 100, morale: 70, stats: declinedStats, overallRating: newOVR },
         career: {
           ...state.gameState.career,
           season: newSeason,
