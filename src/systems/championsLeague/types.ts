@@ -9,11 +9,11 @@ import type { GameDate, MatchPerformance } from '../../core/types';
 // ─── Constantes ──────────────────────────────────────────────────────────────
 
 export const CL_CONSTANTS = {
-  TOTAL_PARTICIPANTS: 50,
+  TOTAL_PARTICIPANTS: 32,
   QUALIFIED_PER_LEAGUE: 4,
   NUM_LEAGUES: 5,
   TOTAL_QUALIFIED: 20,       // 5 × 4
-  TOTAL_FILLERS: 30,         // 50 - 20
+  TOTAL_FILLERS: 12,         // 32 - 20
   MATCHES_PER_TEAM: 8,       // Phase de ligue
   HOME_MATCHES: 4,
   AWAY_MATCHES: 4,
