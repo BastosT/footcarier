@@ -15,6 +15,7 @@ import { useState } from 'react';
 import { useGameStore } from '../../store/gameStore';
 import { formatCurrency } from '../../utils/formatters';
 import { clubsByCountry } from '../../data/clubs/index';
+import { generateMercatoTransfers } from '../../systems/transfer/MercatoNews';
 import type { Club, ClubTier } from '../../core/types';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -668,6 +669,46 @@ export function Transfers() {
           <p className="text-xs text-text-muted mt-1">Continue à performer pour attirer l'attention</p>
         </div>
       )}
+
+      {/* Mercato News */}
+      <MercatoNewsSection season={career.season} month={time.currentDate.month} />
+    </div>
+  );
+}
+
+// ─── Mercato News Section ────────────────────────────────────────────────────
+
+function MercatoNewsSection({ season, month }: { season: number; month: number }) {
+  // Generate transfers based on season and window
+  const window = month === 1 ? 'winter' : month === 8 ? 'summer' : null;
+  const seed = season * 100 + month;
+  let s = seed;
+  const rng = {
+    random: () => { s = (s * 1664525 + 1013904223) & 0xFFFFFFFF; return (s >>> 0) / 0xFFFFFFFF; },
+    randomInt: (min: number, max: number) => { s = (s * 1664525 + 1013904223) & 0xFFFFFFFF; return min + Math.floor(((s >>> 0) / 0xFFFFFFFF) * (max - min + 1)); },
+    randomChoice: <T,>(arr: T[]): T => { s = (s * 1664525 + 1013904223) & 0xFFFFFFFF; return arr[Math.floor(((s >>> 0) / 0xFFFFFFFF) * arr.length)]; },
+    randomFloat: (min: number, max: number) => { s = (s * 1664525 + 1013904223) & 0xFFFFFFFF; return min + ((s >>> 0) / 0xFFFFFFFF) * (max - min); },
+    randomWeighted: <T,>(items: T[], weights: number[]): T => items[0],
+  };
+
+  const transfers = generateMercatoTransfers(season, window ?? 'summer', rng as any);
+
+  return (
+    <div className="mt-6">
+      <h3 className="text-sm font-bold text-text mb-3">📰 Transferts du mercato</h3>
+      <div className="space-y-2">
+        {transfers.map((t) => (
+          <div key={t.id} className="bg-surface rounded-xl p-3 border border-surface-light/50">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-bold text-text">{t.playerName}</p>
+                <p className="text-xs text-text-muted">{t.fromClub} → <span className="text-primary-light">{t.toClub}</span></p>
+              </div>
+              <span className="text-xs font-bold text-accent">{t.fee}M€</span>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
