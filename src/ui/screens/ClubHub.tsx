@@ -262,8 +262,10 @@ function CalendarView({ matches, playerClubId, currentMatchday, leagues }: Calen
           const isPlayed = match.matchday <= currentMatchday;
           const isNext = idx === nextMatchIdx;
 
-          // Find the score for played matches
+          // Find the score and player performance for played matches
           let score: string | null = null;
+          let playerGoalsInMatch = 0;
+          let playerAssistsInMatch = 0;
           if (isPlayed) {
             const matchResult = results.find(
               (r) => r.matchday === match.matchday &&
@@ -271,13 +273,18 @@ function CalendarView({ matches, playerClubId, currentMatchday, leagues }: Calen
                  (r.awayTeamId === playerClubId && r.homeTeamId === opponentId))
             );
             if (matchResult) {
-              const playerGoals = matchResult.homeTeamId === playerClubId
+              const pGoals = matchResult.homeTeamId === playerClubId
                 ? matchResult.homeGoals
                 : matchResult.awayGoals;
-              const opponentGoals = matchResult.homeTeamId === playerClubId
+              const oGoals = matchResult.homeTeamId === playerClubId
                 ? matchResult.awayGoals
                 : matchResult.homeGoals;
-              score = `${playerGoals} - ${opponentGoals}`;
+              score = `${pGoals} - ${oGoals}`;
+              // Get player performance
+              if ((matchResult as any).playerPerformance) {
+                playerGoalsInMatch = (matchResult as any).playerPerformance.goals ?? 0;
+                playerAssistsInMatch = (matchResult as any).playerPerformance.assists ?? 0;
+              }
             }
           }
 
@@ -319,9 +326,17 @@ function CalendarView({ matches, playerClubId, currentMatchday, leagues }: Calen
                   <span className="text-xs font-bold text-primary-light">PROCHAIN</span>
                 )}
                 {isPlayed && score && (
-                  <span className={`text-sm font-bold ${getScoreColor(score, playerClubId)}`}>
-                    {score}
-                  </span>
+                  <div className="text-right">
+                    <span className={`text-sm font-bold ${getScoreColor(score, playerClubId)}`}>
+                      {score}
+                    </span>
+                    {(playerGoalsInMatch > 0 || playerAssistsInMatch > 0) && (
+                      <p className="text-[10px] text-text-muted">
+                        {playerGoalsInMatch > 0 && <span className="text-green-400">{'⚽'.repeat(playerGoalsInMatch)}</span>}
+                        {playerAssistsInMatch > 0 && <span className="text-blue-400 ml-0.5">{'🎯'.repeat(playerAssistsInMatch)}</span>}
+                      </p>
+                    )}
+                  </div>
                 )}
                 {isPlayed && !score && (
                   <span className="text-xs text-text-muted">Joué ✓</span>
