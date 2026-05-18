@@ -10,10 +10,11 @@ import { generateSeasonSchedule } from '../../systems/league/LeagueEngine';
 import { clubsByCountry } from '../../data/clubs/index';
 import { formatCurrency } from '../../utils/formatters';
 import { generateBallonDorRanking, generateBestYoungPlayer, type BallonDorCandidate } from '../../systems/career/BallonDor';
+import { NationalTeamSystem, type NationalMatchResult, type NationalCompetition } from '../../systems/career/NationalTeam';
 import { createRNG } from '../../utils/random';
 import type { LeagueState, LeagueStanding, TopScorer, Country, Division, ScheduledMatch } from '../../core/types';
 
-type CeremonyStep = 'recap' | 'champion' | 'topscorer' | 'ballondor' | 'bestxi' | 'player' | 'next';
+type CeremonyStep = 'recap' | 'champion' | 'topscorer' | 'ballondor' | 'national' | 'bestxi' | 'player' | 'next';
 
 export function SeasonEnd() {
   const { goToScreen } = useNavigation();
@@ -260,7 +261,9 @@ export function SeasonEnd() {
         </div>
       )}
 
-      {step === 'ballondor' && <BallonDorStep gameState={gameState} onNext={() => setStep('player')} />}
+      {step === 'ballondor' && <BallonDorStep gameState={gameState} onNext={() => setStep('national')} />}
+
+      {step === 'national' && <NationalTeamStep gameState={gameState} onNext={() => setStep('player')} />}
 
       {step === 'player' && (
         <div className="flex-1 flex flex-col items-center justify-center text-center">
@@ -491,6 +494,175 @@ function BallonDorStep({ gameState, onNext }: { gameState: any; onNext: () => vo
             </div>
           ))}
         </div>
+      </div>
+
+      <button
+        onClick={onNext}
+        className="py-3 px-8 bg-primary text-white font-semibold rounded-xl active:scale-95"
+      >
+        Suivant →
+      </button>
+    </div>
+  );
+}
+
+// ─── National Team Step ──────────────────────────────────────────────────────
+
+function NationalTeamStep({ gameState, onNext }: { gameState: any; onNext: () => void }) {
+  const year = gameState.time.currentDate.year;
+  const competition = NationalTeamSystem.getCompetitionForYear(year);
+  const isEligible = NationalTeamSystem.isEligibleForNationalTeam(gameState);
+  const country = gameState.player.nationality;
+  const team = NationalTeamSystem.NATIONAL_TEAMS[country as keyof typeof NationalTeamSystem.NATIONAL_TEAMS];
+
+  const [results, setResults] = useState<NationalMatchResult[] | null>(null);
+  const [simulated, setSimulated] = useState(false);
+
+  const competitionName = competition === 'world_cup' ? 'Coupe du Monde' : 'Euro';
+  const competitionEmoji = competition === 'world_cup' ? '🏆' : '⚽';
+
+  // Not a competition year or not eligible
+  if (!competition || !isEligible) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center text-center">
+        <p className="text-5xl mb-4">🏳️</p>
+        <h2 className="text-xl font-bold text-text mb-2">Équipe nationale</h2>
+        {!competition ? (
+          <p className="text-text-muted text-sm mb-6">Pas de compétition internationale cette année.</p>
+        ) : (
+          <div className="mb-6">
+            <p className="text-text-muted text-sm">Tu n'es pas convoqué pour le {competitionName}.</p>
+            <p className="text-xs text-text-muted mt-2">
+              Conditions : OVR ≥ 60 (actuel : {gameState.player.overallRating}) + bonnes performances
+            </p>
+          </div>
+        )}
+        <button
+          onClick={onNext}
+          className="py-3 px-8 bg-primary text-white font-semibold rounded-xl active:scale-95"
+        >
+          Suivant →
+        </button>
+      </div>
+    );
+  }
+
+  // Simulate competition
+  const handleSimulate = () => {
+    const rng = createRNG(year * 7777 + gameState.career.season);
+    const competitionResults = NationalTeamSystem.simulateCompetition(gameState, competition, rng);
+    setResults(competitionResults);
+    setSimulated(true);
+
+    // Update national team stats in game state
+    const totalGoals = competitionResults.reduce((sum, r) => sum + r.playerGoals, 0);
+    const totalAssists = competitionResults.reduce((sum, r) => sum + r.playerAssists, 0);
+    const caps = competitionResults.length;
+
+    const state = useGameStore.getState();
+    if (state.gameState) {
+      const existing = state.gameState.nationalTeam ?? {
+        isConvoked: false, caps: 0, nationalGoals: 0, nationalAssists: 0,
+        currentCompetition: null, competitionResults: [], lastConvocationSeason: 0,
+      };
+
+      useGameStore.setState({
+        gameState: {
+          ...state.gameState,
+          nationalTeam: {
+            ...existing,
+            isConvoked: true,
+            caps: existing.caps + caps,
+            nationalGoals: existing.nationalGoals + totalGoals,
+            nationalAssists: existing.nationalAssists + totalAssists,
+            currentCompetition: competition,
+            competitionResults,
+            lastConvocationSeason: gameState.career.season,
+          },
+        },
+      });
+    }
+  };
+
+  if (!simulated) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center text-center">
+        <p className="text-5xl mb-4">{competitionEmoji}</p>
+        <h2 className="text-xl font-bold text-text mb-2">{competitionName} {year}</h2>
+        <p className="text-text-muted text-sm mb-2">Tu es convoqué avec {team?.name ?? 'ton pays'} ! {team?.flag}</p>
+        <p className="text-xs text-text-muted mb-6">
+          {gameState.player.firstName} {gameState.player.lastName} • OVR {gameState.player.overallRating}
+        </p>
+        <button
+          onClick={handleSimulate}
+          className="py-4 px-8 bg-gradient-to-r from-secondary to-green-500 text-white font-bold rounded-2xl active:scale-95 text-lg"
+        >
+          Jouer la compétition ⚽
+        </button>
+      </div>
+    );
+  }
+
+  // Show results
+  const lastRound = results![results!.length - 1]?.round ?? '';
+  const won = lastRound === 'Finale' && results![results!.length - 1].teamGoals > results![results!.length - 1].opponentGoals;
+  const totalPlayerGoals = results!.reduce((sum, r) => sum + r.playerGoals, 0);
+  const totalPlayerAssists = results!.reduce((sum, r) => sum + r.playerAssists, 0);
+
+  return (
+    <div className="flex-1 flex flex-col items-center text-center overflow-y-auto pb-6">
+      <p className="text-5xl mb-3 mt-4">{won ? '🏆' : competitionEmoji}</p>
+      <h2 className="text-xl font-bold text-text mb-1">
+        {competitionName} {year} — {team?.flag} {team?.name}
+      </h2>
+      {won && <p className="text-yellow-400 font-bold text-lg mb-2">🏆 CHAMPION !</p>}
+      {!won && <p className="text-text-muted text-sm mb-2">Éliminé en {lastRound}</p>}
+
+      {/* Player stats */}
+      <div className="bg-surface rounded-xl p-3 mb-4 w-full max-w-sm">
+        <div className="grid grid-cols-3 gap-3 text-center">
+          <div>
+            <p className="text-xl font-bold text-text">{results!.length}</p>
+            <p className="text-xs text-text-muted">Matchs</p>
+          </div>
+          <div>
+            <p className="text-xl font-bold text-green-400">{totalPlayerGoals}</p>
+            <p className="text-xs text-text-muted">Buts</p>
+          </div>
+          <div>
+            <p className="text-xl font-bold text-blue-400">{totalPlayerAssists}</p>
+            <p className="text-xs text-text-muted">Passes D.</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Match results */}
+      <div className="w-full max-w-sm space-y-1.5 mb-4">
+        {results!.map((match, idx) => {
+          const matchWon = match.teamGoals > match.opponentGoals;
+          const matchDraw = match.teamGoals === match.opponentGoals;
+          return (
+            <div key={idx} className={`flex items-center justify-between p-2.5 rounded-lg border ${
+              matchWon ? 'border-green-500/30 bg-green-500/5' : matchDraw ? 'border-yellow-500/30 bg-yellow-500/5' : 'border-red-500/30 bg-red-500/5'
+            }`}>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-text-muted w-12">{match.round}</span>
+                <span className="text-sm">{match.opponentFlag}</span>
+                <span className="text-xs text-text">{match.opponent}</span>
+              </div>
+              <div className="text-right">
+                <span className={`text-sm font-bold ${matchWon ? 'text-green-400' : matchDraw ? 'text-yellow-400' : 'text-red-400'}`}>
+                  {match.teamGoals} - {match.opponentGoals}
+                </span>
+                {(match.playerGoals > 0 || match.playerAssists > 0) && (
+                  <p className="text-[10px] text-text-muted">
+                    {match.playerGoals > 0 ? `⚽×${match.playerGoals}` : ''}{match.playerAssists > 0 ? ` 🎯×${match.playerAssists}` : ''}
+                  </p>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       <button

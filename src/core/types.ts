@@ -570,6 +570,7 @@ export interface GameState {
   playerCareerStats: PlayerCareerStats;
   lifestyle: LifestyleState;
   championsLeague?: import('../systems/championsLeague/types').ChampionsLeagueState | null;
+  nationalTeam?: import('../systems/career/NationalTeam').NationalTeamState | null;
 }
 
 export interface SaveMetadata {

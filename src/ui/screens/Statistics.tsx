@@ -127,6 +127,27 @@ export function Statistics() {
         )}
       </div>
 
+      {/* National team stats */}
+      {gameState.nationalTeam && gameState.nationalTeam.caps > 0 && (
+        <div className="bg-surface rounded-xl p-4 mb-6">
+          <h3 className="text-sm font-bold text-text mb-3">🏳️ Équipe nationale</h3>
+          <div className="grid grid-cols-3 gap-3 text-center">
+            <div>
+              <p className="text-xl font-bold text-text">{gameState.nationalTeam.caps}</p>
+              <p className="text-xs text-text-muted">Sélections</p>
+            </div>
+            <div>
+              <p className="text-xl font-bold text-green-400">{gameState.nationalTeam.nationalGoals}</p>
+              <p className="text-xs text-text-muted">Buts</p>
+            </div>
+            <div>
+              <p className="text-xl font-bold text-blue-400">{gameState.nationalTeam.nationalAssists}</p>
+              <p className="text-xs text-text-muted">Passes D.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Stats bars */}
       <div className="bg-surface rounded-xl p-4">
         <h3 className="text-sm font-bold text-text mb-3">🎮 Attributs</h3>
