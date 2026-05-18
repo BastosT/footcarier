@@ -11,10 +11,11 @@ import { clubsByCountry } from '../../data/clubs/index';
 import { formatCurrency } from '../../utils/formatters';
 import { generateBallonDorRanking, generateBestYoungPlayer, type BallonDorCandidate } from '../../systems/career/BallonDor';
 import { NationalTeamSystem, type NationalMatchResult, type NationalCompetition } from '../../systems/career/NationalTeam';
+import { DomesticCupSystem, ROUND_LABELS, type DomesticCupState } from '../../systems/league/DomesticCup';
 import { createRNG } from '../../utils/random';
 import type { LeagueState, LeagueStanding, TopScorer, Country, Division, ScheduledMatch } from '../../core/types';
 
-type CeremonyStep = 'recap' | 'champion' | 'topscorer' | 'ballondor' | 'national' | 'bestxi' | 'player' | 'next';
+type CeremonyStep = 'recap' | 'champion' | 'cup' | 'topscorer' | 'ballondor' | 'national' | 'bestxi' | 'player' | 'next';
 
 export function SeasonEnd() {
   const { goToScreen } = useNavigation();
@@ -225,13 +226,15 @@ export function SeasonEnd() {
           )}
 
           <button
-            onClick={() => setStep('topscorer')}
+            onClick={() => setStep('cup')}
             className="py-3 px-8 bg-primary text-white font-semibold rounded-xl active:scale-95"
           >
             Suivant →
           </button>
         </div>
       )}
+
+      {step === 'cup' && <DomesticCupStep gameState={gameState} onNext={() => setStep('topscorer')} />}
 
       {step === 'topscorer' && (
         <div className="flex-1 flex flex-col items-center justify-center text-center">
@@ -663,6 +666,107 @@ function NationalTeamStep({ gameState, onNext }: { gameState: any; onNext: () =>
             </div>
           );
         })}
+      </div>
+
+      <button
+        onClick={onNext}
+        className="py-3 px-8 bg-primary text-white font-semibold rounded-xl active:scale-95"
+      >
+        Suivant →
+      </button>
+    </div>
+  );
+}
+
+// ─── Domestic Cup Step ───────────────────────────────────────────────────────
+
+function DomesticCupStep({ gameState, onNext }: { gameState: any; onNext: () => void }) {
+  const [cupState, setCupState] = useState<DomesticCupState | null>(null);
+  const [simulated, setSimulated] = useState(false);
+
+  const country = gameState.career.currentClub.country;
+  const cupName = DomesticCupSystem.CUP_NAMES[country as keyof typeof DomesticCupSystem.CUP_NAMES] ?? 'Coupe nationale';
+
+  const handleSimulate = () => {
+    const rng = createRNG(gameState.career.season * 3333 + gameState.time.currentDate.year);
+    const result = DomesticCupSystem.simulateFullCup(
+      country,
+      gameState.career.season,
+      gameState.career.currentClub.name,
+      gameState.career.currentClub.tier,
+      gameState.player.overallRating,
+      rng
+    );
+    setCupState(result);
+    setSimulated(true);
+
+    // Save cup state
+    const state = useGameStore.getState();
+    if (state.gameState) {
+      useGameStore.setState({
+        gameState: { ...state.gameState, domesticCup: result },
+      });
+    }
+  };
+
+  if (!simulated) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center text-center">
+        <p className="text-5xl mb-4">🏆</p>
+        <h2 className="text-xl font-bold text-text mb-2">{cupName}</h2>
+        <p className="text-text-muted text-sm mb-6">
+          Tirage au sort et matchs à élimination directe
+        </p>
+        <button
+          onClick={handleSimulate}
+          className="py-4 px-8 bg-gradient-to-r from-purple-600 to-purple-500 text-white font-bold rounded-2xl active:scale-95 text-lg"
+        >
+          Jouer la Coupe 🏆
+        </button>
+      </div>
+    );
+  }
+
+  if (!cupState) return null;
+
+  return (
+    <div className="flex-1 flex flex-col items-center text-center overflow-y-auto pb-6">
+      <p className="text-5xl mb-3 mt-4">{cupState.wonCup ? '🏆' : '😤'}</p>
+      <h2 className="text-xl font-bold text-text mb-1">{cupName}</h2>
+      {cupState.wonCup ? (
+        <p className="text-yellow-400 font-bold text-lg mb-3">🏆 VAINQUEUR DE LA COUPE !</p>
+      ) : (
+        <p className="text-text-muted text-sm mb-3">
+          Éliminé en {ROUND_LABELS[cupState.matches[cupState.matches.length - 1]?.round ?? '16th']}
+        </p>
+      )}
+
+      {/* Match results */}
+      <div className="w-full max-w-sm space-y-2 mb-4">
+        {cupState.matches.map((match, idx) => (
+          <div
+            key={idx}
+            className={`flex items-center justify-between p-3 rounded-xl border ${
+              match.won
+                ? 'border-green-500/30 bg-green-500/5'
+                : 'border-red-500/30 bg-red-500/5'
+            }`}
+          >
+            <div className="text-left">
+              <p className="text-xs text-text-muted">{ROUND_LABELS[match.round]}</p>
+              <p className="text-sm font-medium text-text">vs {match.opponent}</p>
+              <p className="text-[10px] text-text-muted">
+                {match.opponentTier === 'big' ? '⭐ Grand club' : match.opponentTier === 'medium' ? 'Club moyen' : 'Petit club'}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className={`text-lg font-bold ${match.won ? 'text-green-400' : 'text-red-400'}`}>
+                {match.teamGoals} - {match.opponentGoals}
+              </p>
+              <p className="text-[10px] text-text-muted">{match.won ? '✅ Qualifié' : '❌ Éliminé'}</p>
+            </div>
+          </div>
+        ))}
       </div>
 
       <button

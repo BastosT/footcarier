@@ -571,6 +571,7 @@ export interface GameState {
   lifestyle: LifestyleState;
   championsLeague?: import('../systems/championsLeague/types').ChampionsLeagueState | null;
   nationalTeam?: import('../systems/career/NationalTeam').NationalTeamState | null;
+  domesticCup?: import('../systems/league/DomesticCup').DomesticCupState | null;
 }
 
 export interface SaveMetadata {
