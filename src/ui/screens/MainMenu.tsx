@@ -22,7 +22,51 @@ export function MainMenu() {
     setLoading(true);
     try {
       const gameState = await saveManager.loadGame(slot);
-      useGameStore.setState({ gameState, player: gameState.player });
+
+      // Migrate old saves: add missing fields with defaults
+      const migrated = {
+        ...gameState,
+        lifestyle: {
+          possessions: [],
+          investments: [],
+          instagram: { followers: 1000, posts: [], weeklyPostDone: false },
+          youtube: { subscribers: 0, videos: [], weeklyUploadDone: false, monthlyRevenue: 0 },
+          relationships: { current: null, history: [], children: [] },
+          celebrities: { relations: [] },
+          sponsorContracts: [],
+          pets: [],
+          casinoHistory: [],
+          ...gameState.lifestyle,
+          // Ensure nested objects have all fields
+          instagram: { followers: 1000, posts: [], weeklyPostDone: false, ...(gameState.lifestyle?.instagram ?? {}) },
+          youtube: { subscribers: 0, videos: [], weeklyUploadDone: false, monthlyRevenue: 0, ...(gameState.lifestyle?.youtube ?? {}) },
+          relationships: { current: null, history: [], children: [], ...(gameState.lifestyle?.relationships ?? {}) },
+          celebrities: { relations: [], ...(gameState.lifestyle?.celebrities ?? {}) },
+        },
+        social: {
+          popularity: 20, reputation: 20, coachRelation: 50, teamRelation: 50,
+          teamMorale: 50, teamAmbiance: 50, controversyCount: 0, scandalActive: false,
+          socialFeed: [], pendingInterviews: [],
+          ...gameState.social,
+        },
+        career: {
+          ...gameState.career,
+          isCaptain: gameState.career?.isCaptain ?? false,
+        },
+        playerCareerStats: {
+          season: { matchesPlayed: 0, goals: 0, assists: 0, shots: 0, dribbles: 0, tackles: 0, avgRating: 0, totalRating: 0, cleanSheets: 0 },
+          allTime: { matchesPlayed: 0, goals: 0, assists: 0, shots: 0, dribbles: 0, tackles: 0, avgRating: 0, totalRating: 0, cleanSheets: 0 },
+          clGoals: 0,
+          seasonHistory: [],
+          ...gameState.playerCareerStats,
+        },
+        agent: gameState.agent ?? {
+          currentAgent: { id: 'agent-family', name: 'Papa (agent familial)', tier: 'family', emoji: '👨‍👦', commission: 0, offerBonus: 1.0, networkLevel: 1, description: 'Pas de commission mais réseau limité.' },
+          interestedClubs: [],
+        },
+      };
+
+      useGameStore.setState({ gameState: migrated as any, player: migrated.player });
       goToScreen('main');
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Erreur de chargement');
