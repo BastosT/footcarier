@@ -219,27 +219,25 @@ export const useGameStore = create<GameStore>()((...a) => ({
         (p) => p.clubId === updatedClub.id && !p.isFiller
       );
 
-      if (playerQualified) {
-        const playerSchedule = playerLeague?.schedule ?? [];
-        const clState = ChampionsLeagueSystem.initSeason(participants, 1, clRng);
-        // Re-assign dates with player's league schedule to avoid conflicts
-        const clSchedule = ChampionsLeagueSystem.generateLeaguePhaseSchedule(
-          clState.leagueSchedule.map((m) => ({
-            homeTeamId: m.homeTeamId,
-            awayTeamId: m.awayTeamId,
-            matchday: m.matchday,
-          })),
-          2024,
-          playerSchedule
-        );
-        const finalCLState = {
-          ...clState,
-          leagueSchedule: clSchedule,
-          playerParticipating: true,
-          playerClubId: updatedClub.id,
-        };
-        a[1]().initChampionsLeague(finalCLState);
-      }
+      const playerSchedule = playerLeague?.schedule ?? [];
+      const clState = ChampionsLeagueSystem.initSeason(participants, 1, clRng);
+      // Re-assign dates with player's league schedule to avoid conflicts
+      const clSchedule = ChampionsLeagueSystem.generateLeaguePhaseSchedule(
+        clState.leagueSchedule.map((m) => ({
+          homeTeamId: m.homeTeamId,
+          awayTeamId: m.awayTeamId,
+          matchday: m.matchday,
+        })),
+        2024,
+        playerSchedule
+      );
+      const finalCLState = {
+        ...clState,
+        leagueSchedule: clSchedule,
+        playerParticipating: playerQualified,
+        playerClubId: playerQualified ? updatedClub.id : null,
+      };
+      a[1]().initChampionsLeague(finalCLState);
     } catch {
       // If CL initialization fails, continue without it (non-blocking)
     }
