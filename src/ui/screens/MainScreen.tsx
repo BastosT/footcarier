@@ -170,6 +170,9 @@ export function MainScreen({
       {/* Season objectives widget */}
       <SeasonObjectivesWidget />
 
+      {/* Records widget */}
+      <ClubRecordsWidget />
+
       {/* Ballon d'Or race widget */}
       <BallonDorWidget />
     </div>
@@ -258,8 +261,50 @@ export function MainScreenConnected() {
     );
   }
 
+  // Life events — random special moments
+  if (lifeEvent) {
+    return (
+      <div className="min-h-dvh flex flex-col items-center justify-center bg-background p-6">
+        <div className="bg-surface rounded-2xl p-6 max-w-sm w-full text-center">
+          <p className="text-4xl mb-4">{lifeEvent.emoji}</p>
+          <h2 className="text-lg font-bold text-text mb-2">{lifeEvent.title}</h2>
+          <p className="text-text-muted text-sm mb-4">{lifeEvent.description}</p>
+          {lifeEvent.effect && (
+            <p className="text-xs text-green-400 mb-4">{lifeEvent.effect}</p>
+          )}
+          <button
+            onClick={() => {
+              // Apply effect
+              if (lifeEvent.moraleBonus) {
+                const s = useGameStore.getState();
+                if (s.gameState) {
+                  useGameStore.setState({
+                    gameState: { ...s.gameState, player: { ...s.gameState.player, morale: Math.min(100, s.gameState.player.morale + lifeEvent.moraleBonus) } },
+                  });
+                }
+              }
+              if (lifeEvent.moneyBonus) {
+                const s = useGameStore.getState();
+                if (s.gameState) {
+                  useGameStore.setState({
+                    gameState: { ...s.gameState, finance: { ...s.gameState.finance, balance: s.gameState.finance.balance + lifeEvent.moneyBonus } },
+                  });
+                }
+              }
+              setLifeEvent(null);
+            }}
+            className="w-full py-3 px-6 bg-primary text-white font-semibold rounded-xl active:scale-95"
+          >
+            OK
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const [injuryAlert, setInjuryAlert] = useState<string | null>(null);
   const [scandalAlert, setScandalAlert] = useState(false);
+  const [lifeEvent, setLifeEvent] = useState<{ emoji: string; title: string; description: string; effect?: string; moraleBonus?: number; moneyBonus?: number } | null>(null);
 
   const { player, career, time, leagues } = gameState;
   const isInjured = player.injury !== null && player.injury.weeksRemaining > 0;
@@ -512,9 +557,15 @@ export function MainScreenConnected() {
             `Tu t'es blessé pendant la semaine ! ${getInjuryTypeName(freshState.player.injury!.type)} (${freshState.player.injury!.severity === 'minor' ? 'légère' : freshState.player.injury!.severity === 'moderate' ? 'modérée' : 'grave'}) — ${freshState.player.injury!.weeksRemaining} semaine(s) d'absence.`
           );
         }
+
+        // Random life event (10% chance per week)
+        if (!freshIsInjured && Math.random() < 0.10) {
+          const events = LIFE_EVENTS;
+          const event = events[Math.floor(Math.random() * events.length)];
+          setLifeEvent(event);
+        }
       }
     } catch (e) {
-      // Prevent crash — silently continue
       console.error('SimulateWeek error:', e);
     }
   };
@@ -716,6 +767,84 @@ function SeasonObjectivesWidget() {
             <span className="text-[10px] text-green-400 font-bold w-10 text-right">
               {obj.completed ? '✓' : `${(obj.reward / 1000).toFixed(0)}K€`}
             </span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// ─── Life Events Data ────────────────────────────────────────────────────────
+
+const LIFE_EVENTS = [
+  { emoji: '🎂', title: 'Anniversaire !', description: 'Joyeux anniversaire ! Tes proches t\'ont organisé une fête surprise.', effect: '+10 moral', moraleBonus: 10 },
+  { emoji: '🎄', title: 'Fêtes de fin d\'année', description: 'Noël en famille, un moment de bonheur.', effect: '+8 moral', moraleBonus: 8 },
+  { emoji: '🎁', title: 'Cadeau d\'un fan', description: 'Un fan t\'a envoyé un cadeau personnalisé au centre d\'entraînement.', effect: '+5 moral', moraleBonus: 5 },
+  { emoji: '👨‍👩‍👦', title: 'Visite de la famille', description: 'Ta famille est venue te voir jouer ce week-end.', effect: '+8 moral', moraleBonus: 8 },
+  { emoji: '🏆', title: 'Récompense du club', description: 'Le club t\'a remis un prix pour ton implication.', effect: '+5 moral, +5 000€', moraleBonus: 5, moneyBonus: 5000 },
+  { emoji: '📸', title: 'Shooting photo', description: 'Séance photo pour un magazine sportif.', effect: '+3 moral, +2 000€', moraleBonus: 3, moneyBonus: 2000 },
+  { emoji: '🎮', title: 'Soirée gaming', description: 'Soirée jeux vidéo avec les coéquipiers.', effect: '+5 moral', moraleBonus: 5 },
+  { emoji: '🍽️', title: 'Dîner d\'équipe', description: 'Le capitaine a organisé un dîner d\'équipe.', effect: '+6 moral', moraleBonus: 6 },
+  { emoji: '🚗', title: 'Road trip', description: 'Petit road trip le jour de repos avec des amis.', effect: '+7 moral', moraleBonus: 7 },
+  { emoji: '📺', title: 'Passage TV', description: 'Tu es invité sur un plateau TV pour parler de ta saison.', effect: '+3 moral, +3 000€', moraleBonus: 3, moneyBonus: 3000 },
+  { emoji: '💰', title: 'Prime exceptionnelle', description: 'Le club te verse une prime pour tes performances.', effect: '+10 000€', moneyBonus: 10000 },
+  { emoji: '⚠️', title: 'Amende fiscale', description: 'Contrôle fiscal... Tu dois payer une amende.', effect: '-5 000€', moneyBonus: -5000 },
+  { emoji: '🚨', title: 'Cambriolage', description: 'Ton domicile a été cambriolé pendant un déplacement.', effect: '-10 000€, -5 moral', moraleBonus: -5, moneyBonus: -10000 },
+  { emoji: '🤕', title: 'Accident de voiture', description: 'Petit accrochage en voiture. Plus de peur que de mal.', effect: '-3 moral', moraleBonus: -3 },
+  { emoji: '🌟', title: 'Fan day', description: 'Journée avec les jeunes du centre de formation. Inspirant !', effect: '+5 moral', moraleBonus: 5 },
+];
+
+// ─── Club Records Widget ─────────────────────────────────────────────────────
+
+function ClubRecordsWidget() {
+  const gameState = useGameStore((s) => s.gameState);
+  if (!gameState) return null;
+
+  const seasonStats = gameState.playerCareerStats?.season;
+  if (!seasonStats || seasonStats.matchesPlayed < 5) return null;
+
+  // Club records (based on tier — bigger clubs have higher records to beat)
+  const tier = gameState.career.currentClub.tier;
+  const clubRecords = {
+    goals: tier === 'big' ? 25 : tier === 'medium' ? 18 : 12,
+    assists: tier === 'big' ? 15 : tier === 'medium' ? 10 : 7,
+    rating: tier === 'big' ? 7.8 : tier === 'medium' ? 7.5 : 7.2,
+  };
+
+  const avgRating = seasonStats.matchesPlayed > 0 ? seasonStats.totalRating / seasonStats.matchesPlayed : 0;
+
+  const records = [
+    { label: 'Record buts du club', current: seasonStats.goals, record: clubRecords.goals, emoji: '⚽', beaten: seasonStats.goals >= clubRecords.goals },
+    { label: 'Record passes D.', current: seasonStats.assists, record: clubRecords.assists, emoji: '🎯', beaten: seasonStats.assists >= clubRecords.assists },
+    { label: 'Meilleure note moy.', current: Math.round(avgRating * 10) / 10, record: clubRecords.rating, emoji: '⭐', beaten: avgRating >= clubRecords.rating },
+  ];
+
+  const anyBeaten = records.some((r) => r.beaten);
+  if (!anyBeaten && seasonStats.goals < clubRecords.goals * 0.5) return null; // Don't show if far from records
+
+  return (
+    <section className="px-4 pb-3">
+      <div className="flex items-center justify-between mb-1.5">
+        <h2 className="text-xs font-bold text-text-muted uppercase tracking-wide">Records du club</h2>
+      </div>
+      <div className="bg-surface rounded-xl p-2.5 border border-surface-light/50 space-y-1.5">
+        {records.map((rec) => (
+          <div key={rec.label} className="flex items-center gap-2">
+            <span className="text-sm">{rec.beaten ? '🏅' : rec.emoji}</span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between">
+                <p className={`text-[10px] ${rec.beaten ? 'text-yellow-400 font-bold' : 'text-text-muted'}`}>
+                  {rec.label}
+                </p>
+                <span className="text-[10px] text-text-muted">{rec.current}/{rec.record}</span>
+              </div>
+              <div className="h-1 bg-surface-light rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full ${rec.beaten ? 'bg-yellow-500' : 'bg-text-muted/30'}`}
+                  style={{ width: `${Math.min(100, (Number(rec.current) / Number(rec.record)) * 100)}%` }}
+                />
+              </div>
+            </div>
           </div>
         ))}
       </div>
