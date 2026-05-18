@@ -458,6 +458,17 @@ export function MatchPlay() {
             player: { ...gs.player, fitness: newFitness },
             leagues: updatedLeagues,
             career: { ...gs.career, matchday: pendingMatchConfig.matchday },
+            time: {
+              ...gs.time,
+              schedule: {
+                ...gs.time.schedule,
+                nextMatch: (() => {
+                  const playerLeague = updatedLeagues.find((l: any) => l.division.country === gs.career.currentClub.country);
+                  const sched = playerLeague?.schedule ?? [];
+                  return sched.find((m: any) => m.matchday > pendingMatchConfig.matchday && (m.homeTeam === playerClubId || m.awayTeam === playerClubId)) ?? null;
+                })(),
+              },
+            },
           },
         });
       }

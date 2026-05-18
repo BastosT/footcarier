@@ -23,9 +23,8 @@ export function MatchChoice() {
 
   if (!gameState) return null;
 
+  // Use pendingMatchConfig for display info (always preferred)
   const nextMatch = gameState.time.schedule.nextMatch;
-
-  // Use pendingMatchConfig for display info if nextMatch is not available
   const matchInfo = pendingMatchConfig
     ? {
         competition: pendingMatchConfig.competition,
@@ -37,8 +36,8 @@ export function MatchChoice() {
       ? {
           competition: nextMatch.competition,
           matchday: nextMatch.matchday,
-          homeTeam: nextMatch.homeTeam,
-          awayTeam: nextMatch.awayTeam,
+          homeTeam: findClubNameFromLeagues(gameState.leagues, nextMatch.homeTeam) ?? nextMatch.homeTeam,
+          awayTeam: findClubNameFromLeagues(gameState.leagues, nextMatch.awayTeam) ?? nextMatch.awayTeam,
         }
       : null;
 
@@ -289,4 +288,12 @@ function PreMatchPressConference({ opponentName, onComplete }: { opponentName: s
       </button>
     </div>
   );
+}
+
+function findClubNameFromLeagues(leagues: any[], clubId: string): string | undefined {
+  for (const league of leagues) {
+    const standing = league.standings?.find((s: any) => s.clubId === clubId);
+    if (standing) return standing.clubName;
+  }
+  return undefined;
 }
