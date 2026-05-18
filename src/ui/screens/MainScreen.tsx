@@ -315,14 +315,16 @@ export function MainScreenConnected() {
   const { player, career, time, leagues } = gameState;
   const isInjured = player.injury !== null && player.injury.weeksRemaining > 0;
 
-  // Check for active scandal
+  // Check for active scandal (deferred)
   const scandalActive = gameState.social.scandalActive ?? false;
   if (scandalActive && !scandalAlert) {
     setScandalAlert(true);
-    // Reset scandal flag
-    useGameStore.setState({
-      gameState: { ...gameState, social: { ...gameState.social, scandalActive: false } },
-    });
+    setTimeout(() => {
+      const s = useGameStore.getState();
+      if (s.gameState) {
+        useGameStore.setState({ gameState: { ...s.gameState, social: { ...s.gameState.social, scandalActive: false } } });
+      }
+    }, 0);
   }
 
   // Show scandal alert popup
@@ -678,7 +680,7 @@ function SeasonObjectivesWidget() {
   const gameState = useGameStore((s) => s.gameState);
   if (!gameState) return null;
 
-  // Initialize objectives if not set
+  // Get or generate objectives (don't write to state during render)
   let objectives = gameState.seasonObjectives;
   if (!objectives) {
     const rng = createRNG(gameState.career.season * 5555);
@@ -687,9 +689,6 @@ function SeasonObjectivesWidget() {
       gameState.career.currentClub.tier,
       rng
     );
-    useGameStore.setState({
-      gameState: { ...gameState, seasonObjectives: objectives },
-    });
   }
 
   // Check progress
@@ -706,23 +705,32 @@ function SeasonObjectivesWidget() {
     seasonStats?.matchesPlayed ?? 0
   );
 
-  // Update if any objective was newly completed
+  // Save objectives to state only if not yet saved (via effect-like pattern)
+  if (!gameState.seasonObjectives) {
+    // Defer the state update to avoid render loop
+    setTimeout(() => {
+      const s = useGameStore.getState();
+      if (s.gameState && !s.gameState.seasonObjectives) {
+        useGameStore.setState({ gameState: { ...s.gameState, seasonObjectives: objectives } });
+      }
+    }, 0);
+  }
+
+  // Update if any objective was newly completed (deferred to avoid render loop)
   const newlyCompleted = updated.objectives.filter((o) => o.completed).length > objectives.objectives.filter((o) => o.completed).length;
   if (newlyCompleted) {
-    const bonus = updated.bonusEarned - objectives.bonusEarned;
-    if (bonus > 0) {
-      useGameStore.setState({
-        gameState: {
-          ...gameState,
-          seasonObjectives: updated,
-          finance: { ...gameState.finance, balance: gameState.finance.balance + bonus },
-        },
-      });
-    } else {
-      useGameStore.setState({
-        gameState: { ...gameState, seasonObjectives: updated },
-      });
-    }
+    setTimeout(() => {
+      const s = useGameStore.getState();
+      if (!s.gameState) return;
+      const bonus = updated.bonusEarned - (s.gameState.seasonObjectives?.bonusEarned ?? 0);
+      if (bonus > 0) {
+        useGameStore.setState({
+          gameState: { ...s.gameState, seasonObjectives: updated, finance: { ...s.gameState.finance, balance: s.gameState.finance.balance + bonus } },
+        });
+      } else {
+        useGameStore.setState({ gameState: { ...s.gameState, seasonObjectives: updated } });
+      }
+    }, 0);
   }
 
   const completedCount = updated.objectives.filter((o) => o.completed).length;
