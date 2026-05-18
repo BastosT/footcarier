@@ -168,6 +168,76 @@ export function Statistics() {
           ))}
         </div>
       </div>
+
+      {/* Club career summary — grouped by club */}
+      {seasonHistory.length > 0 && (
+        <div className="bg-surface rounded-xl p-4 mt-6">
+          <h3 className="text-sm font-bold text-text mb-3">🏟️ Parcours</h3>
+          <div className="space-y-3">
+            {(() => {
+              // Group seasons by club (consecutive)
+              const groups: { clubName: string; seasons: number[]; totalGoals: number; totalAssists: number; totalMatches: number }[] = [];
+
+              // Add current season
+              const allEntries = [...seasonHistory, {
+                season: career.season,
+                clubName: career.currentClub.name,
+                clubId: career.currentClub.id,
+                goals: currentSeasonEntry.goals,
+                assists: currentSeasonEntry.assists,
+                matchesPlayed: currentSeasonEntry.matchesPlayed,
+                avgRating: currentSeasonEntry.avgRating,
+              }];
+
+              for (const entry of allEntries) {
+                const lastGroup = groups[groups.length - 1];
+                if (lastGroup && lastGroup.clubName === entry.clubName) {
+                  lastGroup.seasons.push(entry.season);
+                  lastGroup.totalGoals += entry.goals;
+                  lastGroup.totalAssists += entry.assists;
+                  lastGroup.totalMatches += entry.matchesPlayed;
+                } else {
+                  groups.push({
+                    clubName: entry.clubName,
+                    seasons: [entry.season],
+                    totalGoals: entry.goals,
+                    totalAssists: entry.assists,
+                    totalMatches: entry.matchesPlayed,
+                  });
+                }
+              }
+
+              const startYear = gameState.time.currentDate.year - (career.season - 1);
+
+              return groups.map((group, idx) => {
+                const fromYear = startYear + group.seasons[0] - 1;
+                const toYear = startYear + group.seasons[group.seasons.length - 1];
+                const yearRange = group.seasons.length === 1 ? `${fromYear}` : `${fromYear} - ${toYear}`;
+
+                return (
+                  <div key={idx} className="flex items-center gap-3 p-3 bg-surface-light/50 rounded-xl border border-surface-light/30">
+                    <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center">
+                      <span className="text-lg">🏟️</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-text truncate">{group.clubName}</p>
+                      <p className="text-xs text-text-muted">{yearRange} • {group.seasons.length} saison{group.seasons.length > 1 ? 's' : ''}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-text">{group.totalMatches} MJ</p>
+                      <p className="text-xs">
+                        <span className="text-green-400 font-bold">{group.totalGoals}⚽</span>
+                        {' '}
+                        <span className="text-blue-400 font-bold">{group.totalAssists}🎯</span>
+                      </p>
+                    </div>
+                  </div>
+                );
+              });
+            })()}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
