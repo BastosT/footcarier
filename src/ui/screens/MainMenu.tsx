@@ -72,6 +72,10 @@ export function MainMenu() {
       };
 
       useGameStore.setState({ gameState: migrated as any, player: migrated.player });
+      // Restore CL slice from gameState if it exists
+      if (migrated.championsLeague) {
+        useGameStore.getState().initChampionsLeague(migrated.championsLeague);
+      }
       goToScreen('main');
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Erreur de chargement');

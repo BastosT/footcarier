@@ -282,7 +282,12 @@ useGameStore.subscribe((state, prevState) => {
     // Debounce: save 500ms after the last change
     if (autoSaveTimeout) clearTimeout(autoSaveTimeout);
     autoSaveTimeout = setTimeout(() => {
-      saveManager.saveGame(1, state.gameState!).catch(() => {
+      // Include CL slice in the saved gameState
+      const gameStateToSave = {
+        ...state.gameState!,
+        championsLeague: state.championsLeague ?? state.gameState!.championsLeague ?? null,
+      };
+      saveManager.saveGame(1, gameStateToSave).catch(() => {
         // Silent fail — don't block gameplay
       });
     }, 500);
