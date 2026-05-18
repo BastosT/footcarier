@@ -16,7 +16,7 @@ import { PenaltyShootout } from './PenaltyShootout';
 import { createRNG } from '../../utils/random';
 import type { LeagueState, LeagueStanding, TopScorer, Country, Division, ScheduledMatch } from '../../core/types';
 
-type CeremonyStep = 'recap' | 'champion' | 'cup' | 'topscorer' | 'ballondor' | 'national' | 'bestxi' | 'player' | 'next';
+type CeremonyStep = 'recap' | 'champion' | 'cup' | 'topscorer' | 'ballondor' | 'national' | 'bestxi' | 'player' | 'vacation' | 'next';
 
 export function SeasonEnd() {
   const { goToScreen } = useNavigation();
@@ -344,13 +344,15 @@ export function SeasonEnd() {
           </div>
 
           <button
-            onClick={() => setStep('next')}
+            onClick={() => setStep('vacation')}
             className="py-3 px-8 bg-primary text-white font-semibold rounded-xl active:scale-95"
           >
             Suivant →
           </button>
         </div>
       )}
+
+      {step === 'vacation' && <VacationStep onNext={() => setStep('next')} />}
 
       {step === 'next' && (
         <div className="flex-1 flex flex-col items-center justify-center text-center">
@@ -831,6 +833,95 @@ function DomesticCupStep({ gameState, onNext }: { gameState: any; onNext: () => 
       >
         Suivant →
       </button>
+    </div>
+  );
+}
+
+// ─── Vacation Step ───────────────────────────────────────────────────────────
+
+const VACATION_DESTINATIONS = [
+  { id: 'maldives', name: 'Maldives', emoji: '🏝️', cost: 15000, moraleBonus: 20, description: 'Plages paradisiaques' },
+  { id: 'dubai', name: 'Dubaï', emoji: '🏜️', cost: 10000, moraleBonus: 15, description: 'Luxe et shopping' },
+  { id: 'ibiza', name: 'Ibiza', emoji: '🎉', cost: 8000, moraleBonus: 15, description: 'Fêtes et soleil' },
+  { id: 'bali', name: 'Bali', emoji: '🌺', cost: 12000, moraleBonus: 18, description: 'Zen et nature' },
+  { id: 'nyc', name: 'New York', emoji: '🗽', cost: 10000, moraleBonus: 12, description: 'Culture et shopping' },
+  { id: 'home', name: 'Rester à la maison', emoji: '🏠', cost: 0, moraleBonus: 5, description: 'Repos tranquille' },
+];
+
+function VacationStep({ onNext }: { onNext: () => void }) {
+  const [chosen, setChosen] = useState<typeof VACATION_DESTINATIONS[0] | null>(null);
+  const gameState = useGameStore((s) => s.gameState);
+
+  if (!gameState) { onNext(); return null; }
+
+  const balance = gameState.finance.balance;
+
+  const handleChoose = (dest: typeof VACATION_DESTINATIONS[0]) => {
+    if (dest.cost > balance) return;
+
+    const state = useGameStore.getState();
+    if (!state.gameState) return;
+
+    useGameStore.setState({
+      gameState: {
+        ...state.gameState,
+        player: { ...state.gameState.player, morale: Math.min(100, state.gameState.player.morale + dest.moraleBonus) },
+        finance: { ...state.gameState.finance, balance: state.gameState.finance.balance - dest.cost },
+      },
+    });
+
+    setChosen(dest);
+  };
+
+  if (chosen) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center text-center">
+        <p className="text-5xl mb-4">{chosen.emoji}</p>
+        <h2 className="text-xl font-bold text-text mb-2">Vacances à {chosen.name} !</h2>
+        <p className="text-text-muted text-sm mb-2">{chosen.description}</p>
+        <p className="text-green-400 text-sm font-medium mb-6">+{chosen.moraleBonus} moral</p>
+        <button onClick={onNext} className="py-3 px-8 bg-primary text-white font-semibold rounded-xl active:scale-95">
+          Suivant →
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 flex flex-col items-center text-center overflow-y-auto pb-6">
+      <p className="text-5xl mb-3 mt-4">✈️</p>
+      <h2 className="text-xl font-bold text-text mb-1">Vacances d'été</h2>
+      <p className="text-text-muted text-sm mb-4">Choisis ta destination pour te reposer</p>
+
+      <div className="w-full max-w-sm space-y-2">
+        {VACATION_DESTINATIONS.map((dest) => {
+          const canAfford = balance >= dest.cost;
+          return (
+            <button
+              key={dest.id}
+              onClick={() => handleChoose(dest)}
+              disabled={!canAfford}
+              className={`w-full p-3 rounded-xl border flex items-center gap-3 text-left transition-all ${
+                canAfford ? 'bg-surface border-surface-light/50 active:scale-[0.98]' : 'bg-surface/50 border-surface-light/30 opacity-50'
+              }`}
+            >
+              <span className="text-2xl">{dest.emoji}</span>
+              <div className="flex-1">
+                <p className="text-sm font-bold text-text">{dest.name}</p>
+                <p className="text-xs text-text-muted">{dest.description}</p>
+              </div>
+              <div className="text-right">
+                {dest.cost > 0 ? (
+                  <p className="text-xs font-bold text-primary-light">{(dest.cost / 1000)}K€</p>
+                ) : (
+                  <p className="text-xs text-green-400 font-bold">Gratuit</p>
+                )}
+                <p className="text-[10px] text-green-400">+{dest.moraleBonus} moral</p>
+              </div>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

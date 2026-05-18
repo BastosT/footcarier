@@ -112,6 +112,24 @@ export function MatchChoice() {
                   <p className="text-xs text-text-muted">Extérieur</p>
                 </div>
               </div>
+              {/* Stadium & Attendance */}
+              {gameState && (() => {
+                const clubTier = gameState.career.currentClub.tier;
+                const pop = gameState.social.popularity;
+                const baseCapacity = clubTier === 'big' ? 60000 : clubTier === 'medium' ? 30000 : 15000;
+                const fillRate = Math.min(100, 60 + pop * 0.4 + (clubTier === 'big' ? 20 : 0));
+                const attendance = Math.round(baseCapacity * fillRate / 100);
+                return (
+                  <div className="mt-3 pt-3 border-t border-surface-light/50">
+                    <p className="text-xs text-text-muted">
+                      🏟️ {gameState.career.currentClub.stadium || 'Stade'} — {attendance.toLocaleString()} / {baseCapacity.toLocaleString()} spectateurs
+                    </p>
+                    <div className="h-1.5 bg-surface-light rounded-full overflow-hidden mt-1 mx-auto max-w-[200px]">
+                      <div className="h-full bg-secondary rounded-full" style={{ width: `${fillRate}%` }} />
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           )}
 
