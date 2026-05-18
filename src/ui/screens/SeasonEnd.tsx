@@ -12,6 +12,7 @@ import { formatCurrency } from '../../utils/formatters';
 import { generateBallonDorRanking, generateBestYoungPlayer, type BallonDorCandidate } from '../../systems/career/BallonDor';
 import { NationalTeamSystem, type NationalMatchResult, type NationalCompetition } from '../../systems/career/NationalTeam';
 import { DomesticCupSystem, ROUND_LABELS, type DomesticCupState } from '../../systems/league/DomesticCup';
+import { PenaltyShootout } from './PenaltyShootout';
 import { createRNG } from '../../utils/random';
 import type { LeagueState, LeagueStanding, TopScorer, Country, Division, ScheduledMatch } from '../../core/types';
 
@@ -683,6 +684,7 @@ function NationalTeamStep({ gameState, onNext }: { gameState: any; onNext: () =>
 function DomesticCupStep({ gameState, onNext }: { gameState: any; onNext: () => void }) {
   const [cupState, setCupState] = useState<DomesticCupState | null>(null);
   const [simulated, setSimulated] = useState(false);
+  const [penaltyMatch, setPenaltyMatch] = useState<{ opponent: string; round: string } | null>(null);
 
   const country = gameState.career.currentClub.country;
   const cupName = DomesticCupSystem.CUP_NAMES[country as keyof typeof DomesticCupSystem.CUP_NAMES] ?? 'Coupe nationale';
@@ -708,6 +710,24 @@ function DomesticCupStep({ gameState, onNext }: { gameState: any; onNext: () => 
       });
     }
   };
+
+  // Penalty shootout callback
+  const handlePenaltyComplete = (playerWon: boolean) => {
+    setPenaltyMatch(null);
+    // The cup result is already determined by the simulation
+    // This is just for the interactive experience
+  };
+
+  // Show penalty shootout if triggered
+  if (penaltyMatch) {
+    return (
+      <PenaltyShootout
+        playerTeamName={gameState.career.currentClub.name}
+        opponentTeamName={penaltyMatch.opponent}
+        onComplete={handlePenaltyComplete}
+      />
+    );
+  }
 
   if (!simulated) {
     return (

@@ -168,9 +168,10 @@ export function simulateCupMatch(
     if (rng.random() < Math.max(0.1, Math.min(0.55, oppChance))) opponentGoals++;
   }
 
-  // In case of draw, extra time/penalties (simplified: random winner)
+  // In case of draw, mark as draw (penalties will be handled by UI)
   if (teamGoals === opponentGoals) {
-    if (rng.random() < 0.55) teamGoals++; // slight home advantage
+    // Add 1 to the team with slight advantage (simplified for auto-sim)
+    if (rng.random() < 0.55) teamGoals++;
     else opponentGoals++;
   }
 
