@@ -724,8 +724,16 @@ function InstagramView() {
         <h3 className="text-sm font-bold text-text mb-3">📩 Offres de sponsoring</h3>
         {instagram.followers >= 5000 ? (
           <div className="space-y-2">
-            {generateBrandDMs(instagram.followers).map((dm) => {
-              const alreadySigned = (gameState.lifestyle.sponsorContracts ?? []).some((c) => c.id === dm.id);
+            {generateBrandDMs(instagram.followers)
+              .filter((dm) => {
+                // Hide refused offers
+                const refused = (gameState as any).refusedSponsors ?? [];
+                if (refused.includes(dm.id)) return false;
+                // Hide already signed
+                if ((gameState.lifestyle.sponsorContracts ?? []).some((c) => c.id === dm.id)) return false;
+                return true;
+              })
+              .map((dm) => {
               return (
                 <div key={dm.id} className="bg-surface rounded-xl p-3 border border-surface-light">
                   <div className="flex items-center gap-2 mb-1">
@@ -735,9 +743,6 @@ function InstagramView() {
                   </div>
                   <p className="text-xs text-text-muted">{dm.message}</p>
                   <p className="text-xs text-green-400 mt-1">💰 {dm.offer} ({dm.durationMonths} mois)</p>
-                  {alreadySigned ? (
-                    <p className="text-xs text-green-400 font-bold mt-2">✅ Contrat signé</p>
-                  ) : (
                     <div className="flex gap-2 mt-2">
                       <button
                         onClick={() => handleAcceptSponsoring(dm)}
@@ -747,6 +752,14 @@ function InstagramView() {
                       </button>
                       <button
                         onClick={() => {
+                          // Track refused sponsor so it disappears
+                          const s = useGameStore.getState();
+                          if (s.gameState) {
+                            const refused = (s.gameState as any).refusedSponsors ?? [];
+                            useGameStore.setState({
+                              gameState: { ...s.gameState, refusedSponsors: [...refused, dm.id] } as any,
+                            });
+                          }
                           setPostMessage(`❌ Offre de ${dm.brand} refusée`);
                           setTimeout(() => setPostMessage(null), 2000);
                         }}
@@ -755,7 +768,6 @@ function InstagramView() {
                         ❌ Refuser
                       </button>
                     </div>
-                  )}
                 </div>
               );
             })}
