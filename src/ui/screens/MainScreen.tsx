@@ -195,6 +195,11 @@ export function MainScreenConnected() {
   const setPendingMatchConfig = useGameStore((s) => s.setPendingMatchConfig);
   const pendingRestEvent = useGameStore((s) => s.pendingRestEvent);
 
+  // ALL hooks must be at the top, before any conditional returns
+  const [injuryAlert, setInjuryAlert] = useState<string | null>(null);
+  const [scandalAlert, setScandalAlert] = useState(false);
+  const [lifeEvent, setLifeEvent] = useState<{ emoji: string; title: string; description: string; effect?: string; moraleBonus?: number; moneyBonus?: number } | null>(null);
+
   // Handle rest event choices
   const handleRestFree = () => {
     const state = useGameStore.getState();
@@ -306,10 +311,6 @@ export function MainScreenConnected() {
       </div>
     );
   }
-
-  const [injuryAlert, setInjuryAlert] = useState<string | null>(null);
-  const [scandalAlert, setScandalAlert] = useState(false);
-  const [lifeEvent, setLifeEvent] = useState<{ emoji: string; title: string; description: string; effect?: string; moraleBonus?: number; moneyBonus?: number } | null>(null);
 
   const { player, career, time, leagues } = gameState;
   const isInjured = player.injury !== null && player.injury.weeksRemaining > 0;
