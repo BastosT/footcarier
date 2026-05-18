@@ -239,7 +239,7 @@ export function Blackjack({ balance, onComplete, onCancel }: BlackjackProps) {
   const dealerTotal = calculateHand(dealerHand);
 
   return (
-    <div className="flex flex-col p-4 min-h-[450px]">
+    <div className="flex flex-col items-center justify-center p-4 min-h-[450px]">
       {/* Dealer hand */}
       <div className="mb-6">
         <p className="text-xs text-text-muted mb-1">Croupier {phase === 'result' ? `(${dealerTotal})` : ''}</p>

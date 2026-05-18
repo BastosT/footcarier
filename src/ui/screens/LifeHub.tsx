@@ -1836,7 +1836,7 @@ function ViePersoView() {
   // Show Blackjack game
   if (showBlackjack) {
     return (
-      <div className="flex-1 overflow-y-auto pb-20">
+      <div className="flex-1 flex items-center justify-center pb-20">
         <Blackjack
           balance={balance}
           onComplete={(profit) => {
