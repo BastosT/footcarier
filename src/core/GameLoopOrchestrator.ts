@@ -424,8 +424,8 @@ export function advanceDay(
   // When injured: +2 per day (resting and recovering)
   // When healthy: +1 per day (normal recovery)
   const isCurrentlyInjured = InjurySystem.isInjured(newGameState.player);
-  const dailyRecovery = isCurrentlyInjured ? 2 : FitnessManager.DAILY_RECOVERY;
-  const newFitness = Math.min(100, newGameState.player.fitness + dailyRecovery);
+  const fitnessRecovery = isCurrentlyInjured ? 2 : FitnessManager.DAILY_RECOVERY;
+  const newFitness = Math.min(100, newGameState.player.fitness + fitnessRecovery);
   newGameState = {
     ...newGameState,
     player: {
