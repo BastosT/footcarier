@@ -656,6 +656,9 @@ function SocialView() {
         </div>
       )}
 
+      {/* Twitter/X — Beef & Performance tweets */}
+      <TwitterSection />
+
       {/* Feed — Other players */}
       <div className="p-4 pt-0">
         <h3 className="text-sm font-bold text-text mb-3">🌐 Feed</h3>
@@ -765,4 +768,162 @@ function generateFeedPosts(country: string): { player: string; club: string; cap
     likes: 50000 + Math.floor(Math.random() * 500000),
     comments: 200 + Math.floor(Math.random() * 5000),
   }));
+}
+
+// ─── Twitter/X Section ───────────────────────────────────────────────────────
+
+const BEEF_SCENARIOS = [
+  { rival: 'Marcus R.', rivalClub: 'Man United', message: 'Certains joueurs parlent trop et jouent peu... 🤷‍♂️', emoji: '🔥' },
+  { rival: 'Neymar Jr', rivalClub: 'Al-Hilal', message: 'Le football européen n\'est plus ce qu\'il était...', emoji: '💀' },
+  { rival: 'Zlatan', rivalClub: 'Retraité', message: 'Les jeunes d\'aujourd\'hui n\'ont aucun respect pour les légendes.', emoji: '🦁' },
+  { rival: 'K. Benzema', rivalClub: 'Al-Ittihad', message: 'Ballon d\'Or ? Faut d\'abord gagner une Ligue des Champions...', emoji: '🏆' },
+  { rival: 'J. Bellingham', rivalClub: 'Real Madrid', message: 'Trop de hype pour pas assez de trophées 🤔', emoji: '👀' },
+  { rival: 'E. Haaland', rivalClub: 'Man City', message: 'Les stats c\'est bien, mais les titres c\'est mieux.', emoji: '🤖' },
+  { rival: 'Vinícius Jr', rivalClub: 'Real Madrid', message: 'Y\'en a qui dansent plus qu\'ils ne marquent...', emoji: '💃' },
+  { rival: 'B. Saka', rivalClub: 'Arsenal', message: 'Overrated. Change my mind.', emoji: '🧊' },
+];
+
+const POSITIVE_TWEETS = [
+  'QUEL MATCH ! 🔥 @{player} est en feu cette saison !',
+  '@{player} meilleur joueur du championnat, pas de débat. 🐐',
+  'Encore un chef-d\'œuvre de @{player} ce week-end 🎨⚽',
+  '@{player} c\'est le futur Ballon d\'Or, vous êtes pas prêts 🏆',
+  'La performance de @{player} hier soir... INCROYABLE 🤯',
+  '@{player} fait taire les haters match après match 💪',
+  'Meilleur recrutement de la saison : @{player}. Point final.',
+  '@{player} en mode Messi 2012, personne peut l\'arrêter 🚀',
+];
+
+const NEGATIVE_TWEETS = [
+  '@{player} invisible ce week-end... Encore une fois 😴',
+  'Surcoté. @{player} ne mérite pas sa place de titulaire.',
+  '@{player} devrait se concentrer sur le terrain au lieu des réseaux...',
+  'Transfert raté ? @{player} déçoit depuis le début de saison.',
+];
+
+function TwitterSection() {
+  const gameState = useGameStore((s) => s.gameState);
+  const [beefResponse, setBeefResponse] = useState<string | null>(null);
+
+  if (!gameState) return null;
+
+  const seasonStats = gameState.playerCareerStats?.season;
+  const avgRating = seasonStats && seasonStats.matchesPlayed > 0
+    ? seasonStats.totalRating / seasonStats.matchesPlayed
+    : 0;
+  const isPerforming = avgRating >= 7.0 || (seasonStats?.goals ?? 0) >= 5;
+  const playerName = `${gameState.player.firstName} ${gameState.player.lastName}`;
+
+  // Generate a beef scenario based on the current week (deterministic)
+  const weekSeed = gameState.time.currentDate.year * 52 + Math.floor((gameState.time.currentDate.month * 30 + gameState.time.currentDate.day) / 7);
+  const beefIdx = weekSeed % BEEF_SCENARIOS.length;
+  const currentBeef = BEEF_SCENARIOS[beefIdx];
+
+  // Generate performance tweets
+  const tweetPool = isPerforming ? POSITIVE_TWEETS : NEGATIVE_TWEETS;
+  const tweet1Idx = weekSeed % tweetPool.length;
+  const tweet2Idx = (weekSeed + 3) % tweetPool.length;
+  const tweets = [
+    tweetPool[tweet1Idx].replace('{player}', playerName),
+    tweetPool[tweet2Idx].replace('{player}', playerName),
+  ];
+
+  const handleBeefRespond = () => {
+    // Responding to beef = controversy risk but popularity gain
+    const state = useGameStore.getState();
+    if (!state.gameState) return;
+
+    const newControversy = (state.gameState.social.controversyCount ?? 0) + 1;
+    useGameStore.setState({
+      gameState: {
+        ...state.gameState,
+        social: {
+          ...state.gameState.social,
+          popularity: Math.min(100, state.gameState.social.popularity + 3),
+          controversyCount: newControversy,
+        },
+      },
+    });
+    setBeefResponse(`🔥 Tu as répondu à ${currentBeef.rival} ! +3 popularité mais attention aux controverses...`);
+    setTimeout(() => setBeefResponse(null), 4000);
+  };
+
+  const handleBeefIgnore = () => {
+    // Ignoring = reputation gain
+    const state = useGameStore.getState();
+    if (!state.gameState) return;
+
+    useGameStore.setState({
+      gameState: {
+        ...state.gameState,
+        social: {
+          ...state.gameState.social,
+          reputation: Math.min(100, state.gameState.social.reputation + 2),
+        },
+      },
+    });
+    setBeefResponse(`🧘 Tu as ignoré ${currentBeef.rival}. +2 réputation. La classe.`);
+    setTimeout(() => setBeefResponse(null), 3000);
+  };
+
+  return (
+    <div className="p-4 pt-0">
+      <h3 className="text-sm font-bold text-text mb-3">𝕏 Twitter / X</h3>
+
+      {beefResponse && (
+        <div className="bg-surface rounded-xl p-3 mb-3 text-center">
+          <p className="text-xs text-text">{beefResponse}</p>
+        </div>
+      )}
+
+      {/* Beef / Clash */}
+      <div className="bg-surface rounded-xl p-3 border border-red-500/20 mb-3">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-lg">{currentBeef.emoji}</span>
+          <div>
+            <p className="text-xs font-bold text-text">{currentBeef.rival}</p>
+            <p className="text-[10px] text-text-muted">{currentBeef.rivalClub}</p>
+          </div>
+          <span className="text-[10px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded ml-auto">Clash</span>
+        </div>
+        <p className="text-xs text-text mb-3">"{currentBeef.message}"</p>
+        <div className="flex gap-2">
+          <button
+            onClick={handleBeefRespond}
+            className="flex-1 py-1.5 bg-red-500/20 text-red-400 text-xs font-bold rounded-lg border border-red-500/30 active:scale-95"
+          >
+            🔥 Répondre
+          </button>
+          <button
+            onClick={handleBeefIgnore}
+            className="flex-1 py-1.5 bg-surface-light text-text-muted text-xs font-bold rounded-lg active:scale-95"
+          >
+            🧘 Ignorer
+          </button>
+        </div>
+      </div>
+
+      {/* Performance tweets */}
+      <div className="space-y-2">
+        {tweets.map((tweet, idx) => (
+          <div key={idx} className="bg-surface rounded-xl p-3 border border-surface-light">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-6 h-6 bg-blue-500/20 rounded-full flex items-center justify-center">
+                <span className="text-[10px]">𝕏</span>
+              </div>
+              <p className="text-[10px] font-bold text-text">
+                {isPerforming ? ['@FootballDaily', '@LEquipe', '@BeinSports', '@RMCSport'][idx % 4] : ['@hater_foot', '@TrollFC', '@DebatFoot', '@ClashFoot'][idx % 4]}
+              </p>
+              <span className="text-[10px] text-text-muted">• {gameState.time.currentDate.day}/{gameState.time.currentDate.month}</span>
+            </div>
+            <p className="text-xs text-text">{tweet}</p>
+            <div className="flex items-center gap-3 mt-2">
+              <span className="text-[10px] text-text-muted">❤️ {(1000 + Math.floor(Math.random() * 50000)).toLocaleString()}</span>
+              <span className="text-[10px] text-text-muted">🔁 {(100 + Math.floor(Math.random() * 5000)).toLocaleString()}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
