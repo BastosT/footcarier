@@ -12,8 +12,8 @@ import type { PlayerCharacter, TrainingSkill, TrainingResult } from '../../core/
 import { clamp } from '../../utils/math';
 import { type RNG, defaultRNG } from '../../utils/random';
 
-/** Gain d'entraînement significatif : entre 1 et 2 points */
-export const TRAINING_GAIN = { min: 1, max: 2 };
+/** Gain d'entraînement significatif : entre 2 et 3 points */
+export const TRAINING_GAIN = { min: 2, max: 3 };
 
 /**
  * Vérifie si l'entraînement hebdomadaire est disponible.
