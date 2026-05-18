@@ -340,62 +340,139 @@ export function MainScreenConnected() {
   };
 
   const handleMatchDay = () => {
-    if (isInjured) {
-      // Player is injured — auto-simulate the match without them
-      buildMatchConfig();
-      const config = useGameStore.getState().ui.pendingMatchConfig;
-      if (config) {
-        const state = useGameStore.getState();
-        if (state.gameState) {
-          const rng = createRNG(Date.now());
-          const { newState } = simMatchOrchestrator(state.gameState, config, rng);
-          useGameStore.setState({ gameState: newState });
-          setPendingMatchConfig(null);
+    try {
+      if (isInjured) {
+        // Player is injured — auto-simulate the match without them
+        buildMatchConfig();
+        const config = useGameStore.getState().ui.pendingMatchConfig;
+        if (config) {
+          const state = useGameStore.getState();
+          if (state.gameState) {
+            const rng = createRNG(Date.now());
+            const { newState } = simMatchOrchestrator(state.gameState, config, rng);
+            useGameStore.setState({ gameState: newState });
+            setPendingMatchConfig(null);
+          }
         }
+        setInjuryAlert(`Tu es blessé (${getInjuryTypeName(player.injury!.type)}) et ne peux pas jouer. Le match a été simulé sans toi.`);
+        return;
       }
-      setInjuryAlert(`Tu es blessé (${getInjuryTypeName(player.injury!.type)}) et ne peux pas jouer. Le match a été simulé sans toi.`);
-      return;
+      buildMatchConfig();
+      setCurrentScreen('match-choice');
+    } catch (e) {
+      console.error('handleMatchDay error:', e);
     }
-    buildMatchConfig();
-    setCurrentScreen('match-choice');
   };
 
   const handleAdvanceDay = () => {
-    if (isMatchDay) {
-      handleMatchDay();
-      return;
-    }
-    const result = advanceDay();
-    if (result) {
-      // Check if injury occurred during this day
-      if (result.injuryOccurred) {
-        const freshState = useGameStore.getState().gameState;
-        if (freshState?.player.injury) {
-          setInjuryAlert(
-            `Tu t'es blessé ! ${getInjuryTypeName(freshState.player.injury.type)} (${freshState.player.injury.severity === 'minor' ? 'légère' : freshState.player.injury.severity === 'moderate' ? 'modérée' : 'grave'}) — ${freshState.player.injury.weeksRemaining} semaine(s) d'absence.`
-          );
-        }
+    try {
+      if (isMatchDay) {
+        handleMatchDay();
         return;
       }
-      if (result.isMatchDay && result.matchConfig) {
-        // Check if injured before going to match
-        const freshState = useGameStore.getState().gameState;
-        if (freshState?.player.injury && freshState.player.injury.weeksRemaining > 0) {
-          // Auto-simulate
-          const rng = createRNG(Date.now());
-          const { newState } = simMatchOrchestrator(freshState, result.matchConfig, rng);
-          useGameStore.setState({ gameState: newState });
-          setInjuryAlert(`Jour de match mais tu es blessé. Le match a été simulé sans toi.`);
+      const result = advanceDay();
+      if (result) {
+        // Check if injury occurred during this day
+        if (result.injuryOccurred) {
+          const freshState = useGameStore.getState().gameState;
+          if (freshState?.player.injury) {
+            setInjuryAlert(
+              `Tu t'es blessé ! ${getInjuryTypeName(freshState.player.injury.type)} (${freshState.player.injury.severity === 'minor' ? 'légère' : freshState.player.injury.severity === 'moderate' ? 'modérée' : 'grave'}) — ${freshState.player.injury.weeksRemaining} semaine(s) d'absence.`
+            );
+          }
           return;
         }
-        setPendingMatchConfig(result.matchConfig);
-        setCurrentScreen('match-choice');
+        if (result.isMatchDay && result.matchConfig) {
+          // Check if injured before going to match
+          const freshState = useGameStore.getState().gameState;
+          if (freshState?.player.injury && freshState.player.injury.weeksRemaining > 0) {
+            // Auto-simulate
+            const rng = createRNG(Date.now());
+            const { newState } = simMatchOrchestrator(freshState, result.matchConfig, rng);
+            useGameStore.setState({ gameState: newState });
+            setInjuryAlert(`Jour de match mais tu es blessé. Le match a été simulé sans toi.`);
+            return;
+          }
+          setPendingMatchConfig(result.matchConfig);
+          setCurrentScreen('match-choice');
+        }
       }
+    } catch (e) {
+      console.error('handleAdvanceDay error:', e);
     }
   };
 
   const handleTrain = () => {
     setCurrentScreen('training');
+  };
+
+  const handleSimulateWeek = () => {
+    // Wrap simulateWeek to handle injuries during simulation
+    try {
+      const result = simulateWeek();
+
+      // After simulation, check if we stopped on a match day while injured
+      const freshState = useGameStore.getState().gameState;
+      if (freshState) {
+        const freshIsInjured = freshState.player.injury !== null && freshState.player.injury.weeksRemaining > 0;
+
+        // Check if we're now on a match day
+        const freshPlayerLeague = freshState.leagues.find(
+          (l) => l.division.country === freshState.career.currentClub.country
+        );
+        const freshSchedule = freshPlayerLeague?.schedule ?? [];
+        const freshClubId = freshState.career.currentClub.id;
+        const freshNextMatch = freshSchedule.find(
+          (m) => m.matchday > freshState.career.matchday &&
+            (m.homeTeam === freshClubId || m.awayTeam === freshClubId)
+        );
+        const freshIsMatchDay = freshNextMatch !== null &&
+          freshState.time.currentDate.day === freshNextMatch?.date.day &&
+          freshState.time.currentDate.month === freshNextMatch?.date.month &&
+          freshState.time.currentDate.year === freshNextMatch?.date.year;
+
+        if (freshIsMatchDay && freshIsInjured && freshNextMatch) {
+          // Auto-simulate the match
+          const opponentId = freshNextMatch.homeTeam === freshClubId ? freshNextMatch.awayTeam : freshNextMatch.homeTeam;
+          const opponentStanding = (freshPlayerLeague?.standings ?? []).find((s) => s.clubId === opponentId);
+          const opponentClub = {
+            id: opponentId,
+            name: opponentStanding?.clubName ?? opponentId,
+            country: freshState.career.currentClub.country,
+            division: freshState.career.currentClub.division,
+            tier: 'medium' as const,
+            squad: [],
+            finances: { budget: 0, wageBill: 0 },
+            stadium: '',
+            colors: { primary: '#000', secondary: '#fff' },
+          };
+          const isHome = freshNextMatch.homeTeam === freshClubId;
+          const matchConfig = {
+            homeTeam: isHome ? freshState.career.currentClub : opponentClub,
+            awayTeam: isHome ? opponentClub : freshState.career.currentClub,
+            playerCharacter: freshState.player,
+            competition: freshNextMatch.competition,
+            matchday: freshNextMatch.matchday,
+          };
+
+          const rng = createRNG(Date.now());
+          const { newState } = simMatchOrchestrator(freshState, matchConfig, rng);
+          useGameStore.setState({ gameState: newState });
+          setInjuryAlert(`Jour de match mais tu es blessé. Le match a été simulé sans toi.`);
+          return;
+        }
+
+        // Check if injury occurred during the week
+        if (freshIsInjured && !isInjured) {
+          setInjuryAlert(
+            `Tu t'es blessé pendant la semaine ! ${getInjuryTypeName(freshState.player.injury!.type)} (${freshState.player.injury!.severity === 'minor' ? 'légère' : freshState.player.injury!.severity === 'moderate' ? 'modérée' : 'grave'}) — ${freshState.player.injury!.weeksRemaining} semaine(s) d'absence.`
+          );
+        }
+      }
+    } catch (e) {
+      // Prevent crash — silently continue
+      console.error('SimulateWeek error:', e);
+    }
   };
 
   return (
@@ -406,7 +483,7 @@ export function MainScreenConnected() {
       currentDate={time.currentDate}
       trainingAvailable={trainingAvailable && !isMatchDay}
       onAdvanceDay={isMatchDay ? handleMatchDay : handleAdvanceDay}
-      onSimulateWeek={isMatchDay ? handleMatchDay : simulateWeek}
+      onSimulateWeek={isMatchDay ? handleMatchDay : handleSimulateWeek}
       onTrain={handleTrain}
       onPhone={() => setCurrentScreen('phone')}
       isMatchDay={isMatchDay}
