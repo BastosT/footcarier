@@ -1,58 +1,153 @@
 /**
- * Phone — Écran téléphone avec messagerie et réseaux sociaux.
- * Accessible depuis l'écran principal via une icône.
+ * Phone — Écran téléphone avec disposition d'apps comme un vrai smartphone.
+ * Apps : Messages, Instagram, Twitter/X, YouTube, Contacts.
  */
 
 import { useState } from 'react';
 import { useNavigation } from '../hooks/useNavigation';
 import { useGameStore } from '../../store/gameStore';
 
-type PhoneTab = 'messages' | 'social';
+type PhoneApp = 'home' | 'messages' | 'instagram' | 'twitter' | 'youtube';
 
 export function Phone() {
   const { goHome } = useNavigation();
   const gameState = useGameStore((s) => s.gameState);
-  const [activeTab, setActiveTab] = useState<PhoneTab>('messages');
+  const [currentApp, setCurrentApp] = useState<PhoneApp>('home');
 
   if (!gameState) return null;
 
-  return (
-    <div className="min-h-dvh flex flex-col bg-background">
-      {/* Phone header */}
-      <header className="bg-surface p-4 flex items-center justify-between border-b border-surface-light">
-        <button onClick={goHome} className="text-primary-light text-sm">← Retour</button>
-        <h1 className="text-lg font-bold text-text">📱 Téléphone</h1>
-        <div className="w-12" />
-      </header>
+  const instagram = gameState.lifestyle?.instagram ?? { followers: 1000, posts: [], weeklyPostDone: false };
+  const youtube = gameState.lifestyle?.youtube ?? { subscribers: 0, videos: [], weeklyUploadDone: false, monthlyRevenue: 0 };
 
-      {/* Tabs */}
-      <div className="flex bg-surface border-b border-surface-light">
-        <button
-          onClick={() => setActiveTab('messages')}
-          className={`flex-1 py-3 text-sm font-medium transition-colors ${
-            activeTab === 'messages'
-              ? 'text-primary-light border-b-2 border-primary-light'
-              : 'text-text-muted'
-          }`}
-        >
-          💬 Messages
-        </button>
-        <button
-          onClick={() => setActiveTab('social')}
-          className={`flex-1 py-3 text-sm font-medium transition-colors ${
-            activeTab === 'social'
-              ? 'text-primary-light border-b-2 border-primary-light'
-              : 'text-text-muted'
-          }`}
-        >
-          📲 Réseaux
-        </button>
-      </div>
+  const formatCount = (n: number): string => {
+    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+    if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+    return `${n}`;
+  };
 
-      {/* Content */}
-      {activeTab === 'messages' ? <MessagesView /> : <SocialView />}
-    </div>
+  // App header with back button
+  const AppHeader = ({ title, emoji }: { title: string; emoji: string }) => (
+    <header className="bg-surface p-3 flex items-center gap-3 border-b border-surface-light/50">
+      <button onClick={() => setCurrentApp('home')} className="text-primary-light text-sm">←</button>
+      <span className="text-lg">{emoji}</span>
+      <h1 className="text-sm font-bold text-text">{title}</h1>
+    </header>
   );
+
+  // ─── Home Screen (App Grid) ──────────────────────────────────────────────
+
+  if (currentApp === 'home') {
+    return (
+      <div className="min-h-dvh flex flex-col bg-background">
+        {/* Status bar */}
+        <div className="flex items-center justify-between px-4 py-2 bg-background">
+          <span className="text-[10px] text-text-muted">9:41</span>
+          <button onClick={goHome} className="text-xs text-primary-light">Fermer</button>
+        </div>
+
+        {/* App grid */}
+        <div className="flex-1 flex flex-col justify-center px-6 pb-20">
+          <div className="grid grid-cols-4 gap-4">
+            {/* Messages */}
+            <button onClick={() => setCurrentApp('messages')} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
+              <div className="w-14 h-14 bg-green-500 rounded-2xl flex items-center justify-center shadow-lg">
+                <span className="text-2xl">💬</span>
+              </div>
+              <span className="text-[10px] text-text">Messages</span>
+            </button>
+
+            {/* Instagram */}
+            <button onClick={() => setCurrentApp('instagram')} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
+              <div className="w-14 h-14 bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400 rounded-2xl flex items-center justify-center shadow-lg">
+                <span className="text-2xl">📸</span>
+              </div>
+              <span className="text-[10px] text-text">Instagram</span>
+            </button>
+
+            {/* Twitter/X */}
+            <button onClick={() => setCurrentApp('twitter')} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
+              <div className="w-14 h-14 bg-black rounded-2xl flex items-center justify-center shadow-lg border border-surface-light">
+                <span className="text-2xl font-bold text-white">𝕏</span>
+              </div>
+              <span className="text-[10px] text-text">X</span>
+            </button>
+
+            {/* YouTube */}
+            <button onClick={() => setCurrentApp('youtube')} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
+              <div className="w-14 h-14 bg-red-600 rounded-2xl flex items-center justify-center shadow-lg">
+                <span className="text-2xl">▶️</span>
+              </div>
+              <span className="text-[10px] text-text">YouTube</span>
+            </button>
+          </div>
+
+          {/* Quick stats below apps */}
+          <div className="mt-8 bg-surface/50 rounded-2xl p-4 border border-surface-light/30">
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div>
+                <p className="text-xs text-text-muted">📸 Insta</p>
+                <p className="text-sm font-bold text-text">{formatCount(instagram.followers)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-text-muted">𝕏 Twitter</p>
+                <p className="text-sm font-bold text-text">—</p>
+              </div>
+              <div>
+                <p className="text-xs text-text-muted">▶️ YouTube</p>
+                <p className="text-sm font-bold text-text">{formatCount(youtube.subscribers)}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Messages App ────────────────────────────────────────────────────────
+
+  if (currentApp === 'messages') {
+    return (
+      <div className="min-h-dvh flex flex-col bg-background">
+        <AppHeader title="Messages" emoji="💬" />
+        <MessagesView />
+      </div>
+    );
+  }
+
+  // ─── Instagram App ───────────────────────────────────────────────────────
+
+  if (currentApp === 'instagram') {
+    return (
+      <div className="min-h-dvh flex flex-col bg-background">
+        <AppHeader title="Instagram" emoji="📸" />
+        <InstagramView />
+      </div>
+    );
+  }
+
+  // ─── Twitter/X App ───────────────────────────────────────────────────────
+
+  if (currentApp === 'twitter') {
+    return (
+      <div className="min-h-dvh flex flex-col bg-background">
+        <AppHeader title="X (Twitter)" emoji="𝕏" />
+        <TwitterSection />
+      </div>
+    );
+  }
+
+  // ─── YouTube App ─────────────────────────────────────────────────────────
+
+  if (currentApp === 'youtube') {
+    return (
+      <div className="min-h-dvh flex flex-col bg-background">
+        <AppHeader title="YouTube" emoji="▶️" />
+        <YouTubeSection />
+      </div>
+    );
+  }
+
+  return null;
 }
 
 // ─── Messages View ───────────────────────────────────────────────────────────
@@ -382,9 +477,9 @@ function ChatView({ contact, onBack }: { contact: Contact; onBack: () => void })
   );
 }
 
-// ─── Social View — Instagram ─────────────────────────────────────────────────
+// ─── Instagram View ──────────────────────────────────────────────────────────
 
-function SocialView() {
+function InstagramView() {
   const gameState = useGameStore((s) => s.gameState);
   const [postMessage, setPostMessage] = useState<string | null>(null);
 
@@ -616,9 +711,6 @@ function SocialView() {
         </div>
       </div>
 
-      {/* YouTube / TikTok */}
-      <YouTubeSection />
-
       {/* Brand DMs / Sponsoring */}
       <div className="p-4 pt-0">
         <h3 className="text-sm font-bold text-text mb-3">📩 Offres de sponsoring</h3>
@@ -694,9 +786,6 @@ function SocialView() {
           </div>
         </div>
       )}
-
-      {/* Twitter/X — Beef & Performance tweets */}
-      <TwitterSection />
 
       {/* Feed — Other players */}
       <div className="p-4 pt-0">
