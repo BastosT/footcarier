@@ -557,14 +557,14 @@ function InstagramView() {
 
     // Bonus based on club tier and player rating
     const tierMultiplier = career.currentClub.tier === 'big' ? 3 : career.currentClub.tier === 'medium' ? 1.5 : 1;
-    const ratingBonus = Math.floor((player.overallRating - 60) * 5);
+    const ratingBonus = Math.max(0, Math.floor((player.overallRating - 60) * 5));
 
     // Viral chance: 10% for reels, 5% for photos, 2% for stories
     const viralChance = option.type === 'reel' ? 0.10 : option.type === 'photo' ? 0.05 : 0.02;
     const isViral = rng() < viralChance;
     const viralMultiplier = isViral ? 5 + Math.floor(rng() * 5) : 1; // 5x-10x if viral
 
-    const followersGained = Math.round((baseGain + ratingBonus) * tierMultiplier * viralMultiplier);
+    const followersGained = Math.max(1, Math.round((baseGain + ratingBonus) * tierMultiplier * viralMultiplier));
     const likes = Math.round(followersGained * (3 + rng() * 5));
 
     const newPost = {
@@ -579,24 +579,32 @@ function InstagramView() {
 
     const newFollowers = ig.followers + followersGained;
 
+    // Re-read fresh state to avoid race conditions
+    const freshState = useGameStore.getState();
+    if (!freshState.gameState) return;
+    const freshIg = freshState.gameState.lifestyle.instagram ?? ig;
+
     useGameStore.setState({
       gameState: {
-        ...state.gameState,
+        ...freshState.gameState,
         lifestyle: {
-          ...state.gameState.lifestyle,
+          ...freshState.gameState.lifestyle,
           instagram: {
-            followers: newFollowers,
-            posts: [newPost, ...ig.posts].slice(0, 50),
+            ...freshIg,
+            followers: freshIg.followers + followersGained,
+            posts: [newPost, ...freshIg.posts].slice(0, 50),
             weeklyPostDone: true,
           },
         },
       },
     });
 
+    const actualNewFollowers = freshIg.followers + followersGained;
+
     if (isViral) {
-      setPostMessage(`🔥 POST VIRAL ! +${followersGained} abonnés ! (${formatFollowers(newFollowers)} total)`);
+      setPostMessage(`🔥 POST VIRAL ! +${followersGained} abonnés ! (${formatFollowers(actualNewFollowers)} total)`);
     } else {
-      setPostMessage(`📸 Posté ! +${followersGained} abonnés (${formatFollowers(newFollowers)} total)`);
+      setPostMessage(`📸 Posté ! +${followersGained} abonnés (${formatFollowers(actualNewFollowers)} total)`);
     }
     setTimeout(() => setPostMessage(null), 4000);
   };
