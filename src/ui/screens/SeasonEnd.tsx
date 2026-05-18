@@ -147,7 +147,7 @@ export function SeasonEnd() {
           player: { ...state.gameState.player, age: newAge, stats: declinedStats },
         },
       });
-      goToScreen('main'); // Will be handled by retirement check
+      goToScreen('retirement');
       return;
     }
 
@@ -159,6 +159,10 @@ export function SeasonEnd() {
       (declinedStats.pace + declinedStats.shooting + declinedStats.passing +
        declinedStats.dribbling + declinedStats.defending + declinedStats.physical) / 6
     );
+
+    // Coach change: 25% chance each season — resets coachRelation to 50
+    const coachChanged = Math.random() < 0.25;
+    const newCoachRelation = coachChanged ? 50 : state.gameState.social.coachRelation;
 
     useGameStore.setState({
       gameState: {
@@ -192,7 +196,7 @@ export function SeasonEnd() {
           })(),
         },
         leagues: newLeagues,
-        social: { ...state.gameState.social, teamMorale: 60 },
+        social: { ...state.gameState.social, teamMorale: 60, coachRelation: newCoachRelation, controversyCount: 0, scandalActive: false },
         playerCareerStats: newPlayerCareerStats,
       },
       restEventsThisMonth: 0,

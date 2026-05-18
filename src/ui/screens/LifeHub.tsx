@@ -1127,6 +1127,64 @@ function RelationshipDashboard({ relationship }: { relationship: Relationship })
     setTimeout(() => setMessage(null), 3000);
   };
 
+  // Actions that degrade the relationship
+  const handleNeglect = () => {
+    const state = useGameStore.getState();
+    if (!state.gameState?.lifestyle.relationships.current) return;
+    const rel = state.gameState.lifestyle.relationships.current;
+    const newLove = Math.max(0, rel.love - 8);
+
+    useGameStore.setState({
+      gameState: {
+        ...state.gameState,
+        lifestyle: {
+          ...state.gameState.lifestyle,
+          relationships: {
+            ...state.gameState.lifestyle.relationships,
+            current: { ...rel, love: newLove },
+          },
+        },
+      },
+    });
+
+    if (newLove <= 0 && rel.status === 'married') {
+      // Auto-divorce
+      handleBreakUp();
+      setMessage(`💔 Divorce ! La relation s'est trop dégradée...`);
+    } else {
+      setMessage(`😢 Tu négliges ${rel.womanName}... -8 ❤️`);
+    }
+    setTimeout(() => setMessage(null), 3000);
+  };
+
+  const handleArgue = () => {
+    const state = useGameStore.getState();
+    if (!state.gameState?.lifestyle.relationships.current) return;
+    const rel = state.gameState.lifestyle.relationships.current;
+    const newLove = Math.max(0, rel.love - 12);
+
+    useGameStore.setState({
+      gameState: {
+        ...state.gameState,
+        lifestyle: {
+          ...state.gameState.lifestyle,
+          relationships: {
+            ...state.gameState.lifestyle.relationships,
+            current: { ...rel, love: newLove },
+          },
+        },
+      },
+    });
+
+    if (newLove <= 0 && rel.status === 'married') {
+      handleBreakUp();
+      setMessage(`💔 Divorce après une dispute de trop...`);
+    } else {
+      setMessage(`😡 Grosse dispute avec ${rel.womanName}... -12 ❤️`);
+    }
+    setTimeout(() => setMessage(null), 3000);
+  };
+
   return (
     <div className="flex-1 overflow-y-auto px-4 py-4 pb-20">
       {/* Baby naming modal */}
@@ -1355,6 +1413,25 @@ function RelationshipDashboard({ relationship }: { relationship: Relationship })
                 </div>
               </button>
             )}
+
+            {/* Actions négatives */}
+            <div className="border-t border-surface-light/30 pt-2 mt-2">
+              <p className="text-[10px] text-text-muted mb-1.5">⚠️ Actions risquées</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleNeglect}
+                  className="flex-1 py-2 bg-orange-500/10 border border-orange-500/30 rounded-lg text-xs text-orange-400 font-medium active:scale-95"
+                >
+                  😴 Négliger (-8❤️)
+                </button>
+                <button
+                  onClick={handleArgue}
+                  className="flex-1 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-xs text-red-400 font-medium active:scale-95"
+                >
+                  😡 Disputer (-12❤️)
+                </button>
+              </div>
+            </div>
 
             {/* Rupture */}
             <button

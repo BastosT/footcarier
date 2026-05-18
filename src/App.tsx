@@ -26,9 +26,10 @@ import { Training } from './ui/screens/Training';
 import { LifeHub } from './ui/screens/LifeHub';
 import { SeasonEnd } from './ui/screens/SeasonEnd';
 import { Phone } from './ui/screens/Phone';
+import { Retirement } from './ui/screens/Retirement';
 
 /** Screens where the bottom navigation bar should NOT be displayed */
-const SCREENS_WITHOUT_NAV: ScreenType[] = ['main-menu', 'character-creation', 'club-selection', 'match-play', 'season-end'];
+const SCREENS_WITHOUT_NAV: ScreenType[] = ['main-menu', 'character-creation', 'club-selection', 'match-play', 'season-end', 'retirement'];
 
 function App() {
   const { currentScreen } = useNavigation();
@@ -63,6 +64,8 @@ function renderScreen(screen: ScreenType): React.ReactNode {
       return <PostMatch />;
     case 'season-end':
       return <SeasonEnd />;
+    case 'retirement':
+      return <Retirement />;
     case 'phone':
       return <Phone />;
     case 'standings':

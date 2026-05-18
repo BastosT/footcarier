@@ -21,7 +21,8 @@ export type ScreenType =
   | 'transfers'
   | 'social'
   | 'finance'
-  | 'trophies';
+  | 'trophies'
+  | 'retirement';
 
 /** Summary of the last match played/simulated, used by PostMatch screen */
 export interface LastMatchSummary {
