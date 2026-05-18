@@ -59,6 +59,98 @@ export function useGameLoop(): UseGameLoopReturn {
     // Handle training reset on Monday
     if (result.trainingReset) {
       resetWeeklyTraining();
+
+      // Simulate CL matchday on Mondays (CL matches happen midweek)
+      const clState = useGameStore.getState().championsLeague;
+      if (clState && clState.phase === 'league' && clState.currentMatchday <= 8) {
+        const clRng = createRNG(Date.now() + 4444);
+        const currentCLMatchday = clState.currentMatchday;
+
+        // Simulate all matches for this CL matchday
+        const matchesThisDay = clState.leagueSchedule.filter((m) => m.matchday === currentCLMatchday);
+        const newResults = [...clState.leagueResults];
+
+        for (const match of matchesThisDay) {
+          // Skip if already played
+          if (newResults.some((r) => r.homeTeamId === match.homeTeamId && r.awayTeamId === match.awayTeamId && r.matchday === match.matchday)) continue;
+
+          // Skip player's match (handled separately)
+          const playerClubId = useGameStore.getState().gameState?.career.currentClub.id;
+          const playerParticipant = clState.participants.find((p) => p.clubId === playerClubId);
+          if (playerParticipant && (match.homeTeamId === playerParticipant.id || match.awayTeamId === playerParticipant.id)) continue;
+
+          // Simulate the match
+          const home = clState.participants.find((p) => p.id === match.homeTeamId);
+          const away = clState.participants.find((p) => p.id === match.awayTeamId);
+          const homeRating = home?.averageRating ?? 72;
+          const awayRating = away?.averageRating ?? 72;
+
+          const diff = homeRating - awayRating;
+          const homeChance = 0.35 + diff / 100;
+          let homeGoals = 0;
+          let awayGoals = 0;
+          for (let i = 0; i < 4; i++) {
+            if (clRng.random() < Math.max(0.1, Math.min(0.6, homeChance))) homeGoals++;
+            if (clRng.random() < Math.max(0.1, Math.min(0.6, 0.35 - diff / 100))) awayGoals++;
+          }
+
+          newResults.push({
+            matchday: currentCLMatchday,
+            homeTeamId: match.homeTeamId,
+            awayTeamId: match.awayTeamId,
+            homeGoals,
+            awayGoals,
+            phase: 'league' as const,
+          });
+        }
+
+        // Update standings
+        const newStandings = clState.standings.map((s) => {
+          let played = 0, won = 0, drawn = 0, lost = 0, goalsFor = 0, goalsAgainst = 0, points = 0;
+          for (const r of newResults) {
+            if (r.homeTeamId === s.participantId) {
+              played++;
+              goalsFor += r.homeGoals;
+              goalsAgainst += r.awayGoals;
+              if (r.homeGoals > r.awayGoals) { won++; points += 3; }
+              else if (r.homeGoals === r.awayGoals) { drawn++; points += 1; }
+              else { lost++; }
+            } else if (r.awayTeamId === s.participantId) {
+              played++;
+              goalsFor += r.awayGoals;
+              goalsAgainst += r.homeGoals;
+              if (r.awayGoals > r.homeGoals) { won++; points += 3; }
+              else if (r.awayGoals === r.homeGoals) { drawn++; points += 1; }
+              else { lost++; }
+            }
+          }
+          return { ...s, played, won, drawn, lost, goalsFor, goalsAgainst, points };
+        });
+
+        // Sort standings by points, then goal difference
+        newStandings.sort((a, b) => {
+          if (b.points !== a.points) return b.points - a.points;
+          const gdA = a.goalsFor - a.goalsAgainst;
+          const gdB = b.goalsFor - b.goalsAgainst;
+          if (gdB !== gdA) return gdB - gdA;
+          return b.goalsFor - a.goalsFor;
+        });
+        newStandings.forEach((s, i) => { s.position = i + 1; });
+
+        // Advance to next matchday
+        const nextMatchday = currentCLMatchday + 1;
+
+        useGameStore.getState().updateCLStandings(newStandings);
+        useGameStore.setState((state) => ({
+          championsLeague: state.championsLeague ? {
+            ...state.championsLeague,
+            leagueResults: newResults,
+            currentMatchday: nextMatchday,
+            // If all 8 matchdays done, transition to knockout
+            phase: nextMatchday > 8 ? 'knockout' as const : 'league' as const,
+          } : null,
+        }));
+      }
     }
 
     // Random rest event (~10% chance per day, max 2/month)
