@@ -16,6 +16,7 @@ import { useGameStore } from '../../store/gameStore';
 import { formatGameDate, getWeekdayName } from '../../utils/formatters';
 import { simulateMatch as simMatchOrchestrator } from '../../core/GameLoopOrchestrator';
 import { generateBallonDorRanking } from '../../systems/career/BallonDor';
+import { generateSeasonObjectives, checkObjectives } from '../../systems/career/SeasonObjectives';
 import { createRNG } from '../../utils/random';
 import type { PlayerCharacter, LeagueStanding, ScheduledMatch, GameDate } from '../../core/types';
 
@@ -166,6 +167,9 @@ export function MainScreen({
           />
         </div>
       </section>
+
+      {/* Season objectives widget */}
+      <SeasonObjectivesWidget />
 
       {/* Ballon d'Or race widget */}
       <BallonDorWidget />
@@ -607,6 +611,114 @@ function BallonDorWidget() {
             </div>
           ))}
         </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── Season Objectives Widget ────────────────────────────────────────────────
+
+function SeasonObjectivesWidget() {
+  const gameState = useGameStore((s) => s.gameState);
+  if (!gameState) return null;
+
+  // Initialize objectives if not set
+  let objectives = gameState.seasonObjectives;
+  if (!objectives) {
+    const rng = createRNG(gameState.career.season * 5555);
+    objectives = generateSeasonObjectives(
+      gameState.player.overallRating,
+      gameState.career.currentClub.tier,
+      rng
+    );
+    useGameStore.setState({
+      gameState: { ...gameState, seasonObjectives: objectives },
+    });
+  }
+
+  // Check progress
+  const seasonStats = gameState.playerCareerStats?.season;
+  const avgRating = seasonStats && seasonStats.matchesPlayed > 0
+    ? seasonStats.totalRating / seasonStats.matchesPlayed
+    : 0;
+
+  const updated = checkObjectives(
+    objectives,
+    seasonStats?.goals ?? 0,
+    seasonStats?.assists ?? 0,
+    avgRating,
+    seasonStats?.matchesPlayed ?? 0
+  );
+
+  // Update if any objective was newly completed
+  const newlyCompleted = updated.objectives.filter((o) => o.completed).length > objectives.objectives.filter((o) => o.completed).length;
+  if (newlyCompleted) {
+    const bonus = updated.bonusEarned - objectives.bonusEarned;
+    if (bonus > 0) {
+      useGameStore.setState({
+        gameState: {
+          ...gameState,
+          seasonObjectives: updated,
+          finance: { ...gameState.finance, balance: gameState.finance.balance + bonus },
+        },
+      });
+    } else {
+      useGameStore.setState({
+        gameState: { ...gameState, seasonObjectives: updated },
+      });
+    }
+  }
+
+  const completedCount = updated.objectives.filter((o) => o.completed).length;
+  const totalCount = updated.objectives.length;
+
+  const getProgress = (obj: typeof updated.objectives[0]): number => {
+    switch (obj.type) {
+      case 'goals': return Math.min(100, ((seasonStats?.goals ?? 0) / obj.target) * 100);
+      case 'assists': return Math.min(100, ((seasonStats?.assists ?? 0) / obj.target) * 100);
+      case 'rating': return Math.min(100, (avgRating / obj.target) * 100);
+      case 'matches': return Math.min(100, ((seasonStats?.matchesPlayed ?? 0) / obj.target) * 100);
+    }
+  };
+
+  const getCurrent = (obj: typeof updated.objectives[0]): string => {
+    switch (obj.type) {
+      case 'goals': return `${seasonStats?.goals ?? 0}/${obj.target}`;
+      case 'assists': return `${seasonStats?.assists ?? 0}/${obj.target}`;
+      case 'rating': return `${avgRating.toFixed(1)}/${obj.target}`;
+      case 'matches': return `${seasonStats?.matchesPlayed ?? 0}/${obj.target}`;
+    }
+  };
+
+  return (
+    <section className="px-4 pb-4">
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-sm font-bold text-text">🎯 Objectifs du coach</h2>
+        <span className="text-xs text-text-muted">{completedCount}/{totalCount}</span>
+      </div>
+      <div className="bg-surface rounded-2xl p-3 border border-surface-light space-y-2">
+        {updated.objectives.map((obj) => (
+          <div key={obj.id} className="flex items-center gap-2">
+            <span className="text-sm">{obj.completed ? '✅' : '⬜'}</span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between">
+                <p className={`text-xs ${obj.completed ? 'text-green-400 line-through' : 'text-text'}`}>
+                  {obj.description}
+                </p>
+                <span className="text-[10px] text-text-muted ml-1">{getCurrent(obj)}</span>
+              </div>
+              <div className="h-1 bg-surface-light rounded-full overflow-hidden mt-0.5">
+                <div
+                  className={`h-full rounded-full transition-all ${obj.completed ? 'bg-green-500' : 'bg-primary'}`}
+                  style={{ width: `${getProgress(obj)}%` }}
+                />
+              </div>
+            </div>
+            <span className="text-[10px] text-green-400 font-bold w-10 text-right">
+              {obj.completed ? '✓' : `${(obj.reward / 1000).toFixed(0)}K€`}
+            </span>
+          </div>
+        ))}
       </div>
     </section>
   );

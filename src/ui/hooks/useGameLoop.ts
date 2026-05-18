@@ -120,6 +120,23 @@ export function useGameLoop(): UseGameLoopReturn {
           },
         });
       }
+
+      // Monthly YouTube revenue
+      const ytState = useGameStore.getState();
+      if (ytState.gameState) {
+        const ytRevenue = ytState.gameState.lifestyle.youtube?.monthlyRevenue ?? 0;
+        if (ytRevenue > 0) {
+          useGameStore.setState({
+            gameState: {
+              ...ytState.gameState,
+              finance: {
+                ...ytState.gameState.finance,
+                balance: ytState.gameState.finance.balance + ytRevenue,
+              },
+            },
+          });
+        }
+      }
     }
 
     return result;

@@ -535,6 +535,7 @@ export interface LifestyleState {
   possessions: OwnedItem[];
   investments: Investment[];
   instagram: InstagramState;
+  youtube: YouTubeState;
   relationships: RelationshipState;
   celebrities: CelebrityRelationsState;
   sponsorContracts: SponsorContract[];
@@ -556,6 +557,41 @@ export interface InstagramState {
   followers: number;
   posts: InstaPost[];
   weeklyPostDone: boolean;
+}
+
+// ─── YouTube / TikTok ────────────────────────────────────────────────────────
+
+export interface YouTubeState {
+  subscribers: number;
+  videos: YouTubeVideo[];
+  weeklyUploadDone: boolean;
+  monthlyRevenue: number;    // revenus pub mensuels calculés
+}
+
+export interface YouTubeVideo {
+  id: string;
+  type: 'vlog' | 'challenge' | 'skills' | 'gaming' | 'podcast';
+  title: string;
+  views: number;
+  subscribersGained: number;
+  date: GameDate;
+  viral: boolean;
+}
+
+// ─── Objectifs de saison ─────────────────────────────────────────────────────
+
+export interface SeasonObjective {
+  id: string;
+  description: string;
+  type: 'goals' | 'assists' | 'rating' | 'matches';
+  target: number;
+  reward: number;           // bonus en € si atteint
+  completed: boolean;
+}
+
+export interface SeasonObjectivesState {
+  objectives: SeasonObjective[];
+  bonusEarned: number;
 }
 
 export interface InstaPost {
@@ -582,6 +618,7 @@ export interface GameState {
   championsLeague?: import('../systems/championsLeague/types').ChampionsLeagueState | null;
   nationalTeam?: import('../systems/career/NationalTeam').NationalTeamState | null;
   domesticCup?: import('../systems/league/DomesticCup').DomesticCupState | null;
+  seasonObjectives?: SeasonObjectivesState | null;
 }
 
 export interface SaveMetadata {

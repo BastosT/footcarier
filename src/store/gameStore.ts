@@ -172,6 +172,12 @@ export const useGameStore = create<GameStore>()((...a) => ({
           posts: [],
           weeklyPostDone: false,
         },
+        youtube: {
+          subscribers: 0,
+          videos: [],
+          weeklyUploadDone: false,
+          monthlyRevenue: 0,
+        },
         relationships: {
           current: null,
           history: [],

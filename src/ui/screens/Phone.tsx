@@ -580,6 +580,9 @@ function SocialView() {
         </div>
       </div>
 
+      {/* YouTube / TikTok */}
+      <YouTubeSection />
+
       {/* Brand DMs / Sponsoring */}
       <div className="p-4 pt-0">
         <h3 className="text-sm font-bold text-text mb-3">📩 Offres de sponsoring</h3>
@@ -924,6 +927,163 @@ function TwitterSection() {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+// ─── YouTube / TikTok Section ────────────────────────────────────────────────
+
+const VIDEO_OPTIONS = [
+  { type: 'vlog' as const, title: '📹 Vlog journée type', emoji: '🎬', baseGain: { min: 100, max: 500 } },
+  { type: 'challenge' as const, title: '🏆 Challenge football', emoji: '⚽', baseGain: { min: 200, max: 800 } },
+  { type: 'skills' as const, title: '🎯 Tuto skills & dribbles', emoji: '🦶', baseGain: { min: 300, max: 1000 } },
+  { type: 'gaming' as const, title: '🎮 Gaming session (FC 25)', emoji: '🎮', baseGain: { min: 150, max: 600 } },
+  { type: 'podcast' as const, title: '🎙️ Podcast avec un invité', emoji: '🎧', baseGain: { min: 250, max: 900 } },
+];
+
+function YouTubeSection() {
+  const gameState = useGameStore((s) => s.gameState);
+  const [ytMessage, setYtMessage] = useState<string | null>(null);
+
+  if (!gameState) return null;
+
+  const youtube = gameState.lifestyle?.youtube ?? { subscribers: 0, videos: [], weeklyUploadDone: false, monthlyRevenue: 0 };
+  const { player, career } = gameState;
+
+  const formatSubs = (n: number): string => {
+    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+    if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+    return `${n}`;
+  };
+
+  const handleUpload = (option: typeof VIDEO_OPTIONS[0]) => {
+    const state = useGameStore.getState();
+    if (!state.gameState) return;
+
+    const yt = state.gameState.lifestyle.youtube ?? { subscribers: 0, videos: [], weeklyUploadDone: false, monthlyRevenue: 0 };
+
+    if (yt.weeklyUploadDone) {
+      setYtMessage('⏳ Tu as déjà posté cette semaine !');
+      setTimeout(() => setYtMessage(null), 2000);
+      return;
+    }
+
+    const rng = Math.random;
+    const baseGain = option.baseGain.min + Math.floor(rng() * (option.baseGain.max - option.baseGain.min));
+
+    // Bonus based on existing subscribers and player fame
+    const fameMultiplier = career.currentClub.tier === 'big' ? 2.5 : career.currentClub.tier === 'medium' ? 1.5 : 1;
+    const ratingBonus = Math.floor((player.overallRating - 50) * 3);
+
+    // Viral chance: 8% for skills/challenges, 3% for others
+    const viralChance = (option.type === 'skills' || option.type === 'challenge') ? 0.08 : 0.03;
+    const isViral = rng() < viralChance;
+    const viralMultiplier = isViral ? 8 + Math.floor(rng() * 7) : 1;
+
+    const subscribersGained = Math.round((baseGain + ratingBonus) * fameMultiplier * viralMultiplier);
+    const views = Math.round(subscribersGained * (5 + rng() * 15));
+
+    const newVideo = {
+      id: `yt-${Date.now()}`,
+      type: option.type,
+      title: option.title,
+      views,
+      subscribersGained,
+      date: state.gameState.time.currentDate,
+      viral: isViral,
+    };
+
+    const newSubscribers = yt.subscribers + subscribersGained;
+    // Monthly revenue: ~1€ per 1000 subscribers
+    const monthlyRevenue = Math.round(newSubscribers / 1000);
+
+    useGameStore.setState({
+      gameState: {
+        ...state.gameState,
+        lifestyle: {
+          ...state.gameState.lifestyle,
+          youtube: {
+            subscribers: newSubscribers,
+            videos: [newVideo, ...yt.videos].slice(0, 30),
+            weeklyUploadDone: true,
+            monthlyRevenue,
+          },
+        },
+      },
+    });
+
+    if (isViral) {
+      setYtMessage(`🔥 VIDÉO VIRALE ! +${subscribersGained.toLocaleString()} abonnés ! (${formatSubs(newSubscribers)} total)`);
+    } else {
+      setYtMessage(`📹 Vidéo publiée ! +${subscribersGained.toLocaleString()} abonnés (${formatSubs(newSubscribers)} total)`);
+    }
+    setTimeout(() => setYtMessage(null), 4000);
+  };
+
+  return (
+    <div className="p-4 pt-0">
+      <h3 className="text-sm font-bold text-text mb-3">📺 YouTube / TikTok</h3>
+
+      {/* Channel stats */}
+      <div className="bg-gradient-to-r from-red-500/20 to-pink-500/20 rounded-xl p-3 mb-3 border border-red-500/30">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs text-text-muted">Abonnés</p>
+            <p className="text-lg font-black text-text">{formatSubs(youtube.subscribers)}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-xs text-text-muted">Revenus/mois</p>
+            <p className="text-sm font-bold text-green-400">{youtube.monthlyRevenue.toLocaleString()}€</p>
+          </div>
+        </div>
+      </div>
+
+      {ytMessage && (
+        <div className="bg-green-500/20 border border-green-500/40 rounded-xl p-2.5 mb-3 text-center">
+          <p className="text-xs text-green-400 font-medium">{ytMessage}</p>
+        </div>
+      )}
+
+      {/* Upload options */}
+      <p className="text-xs text-text-muted mb-2">
+        {youtube.weeklyUploadDone ? '⏳ Prochaine vidéo la semaine prochaine' : '🎬 Poster une vidéo (1x/semaine)'}
+      </p>
+      <div className="space-y-1.5 mb-3">
+        {VIDEO_OPTIONS.map((option, idx) => (
+          <button
+            key={idx}
+            onClick={() => handleUpload(option)}
+            disabled={youtube.weeklyUploadDone}
+            className={`w-full p-2.5 rounded-lg flex items-center gap-2 border transition-all ${
+              youtube.weeklyUploadDone
+                ? 'bg-surface/50 border-surface-light opacity-50'
+                : 'bg-surface border-surface-light active:scale-[0.98]'
+            }`}
+          >
+            <span className="text-lg">{option.emoji}</span>
+            <div className="flex-1 text-left">
+              <p className="text-xs text-text">{option.title}</p>
+              <p className="text-[10px] text-text-muted">+{option.baseGain.min}-{option.baseGain.max} abonnés</p>
+            </div>
+          </button>
+        ))}
+      </div>
+
+      {/* Recent videos */}
+      {youtube.videos.length > 0 && (
+        <div className="space-y-1.5">
+          <p className="text-xs text-text-muted font-medium">Dernières vidéos</p>
+          {youtube.videos.slice(0, 3).map((video) => (
+            <div key={video.id} className="bg-surface rounded-lg p-2 border border-surface-light flex items-center justify-between">
+              <div>
+                <p className="text-xs text-text">{video.title}</p>
+                <p className="text-[10px] text-text-muted">{video.views.toLocaleString()} vues • +{video.subscribersGained} abo</p>
+              </div>
+              {video.viral && <span className="text-[10px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded">🔥 Viral</span>}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

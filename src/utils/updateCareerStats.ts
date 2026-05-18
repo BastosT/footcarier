@@ -74,6 +74,10 @@ export function updateCareerStatsFromMatch(summary: LastMatchSummary): void {
           followers: ig.followers + followersGain,
           weeklyPostDone: false, // reset weekly post after match
         },
+        youtube: {
+          ...(state.gameState.lifestyle.youtube ?? { subscribers: 0, videos: [], weeklyUploadDone: false, monthlyRevenue: 0 }),
+          weeklyUploadDone: false, // reset weekly upload after match
+        },
       },
     },
   });
