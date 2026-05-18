@@ -456,10 +456,10 @@ export function advanceDay(
   // 4. Injury system: evaluate random injury risk during day advance
   let injuryOccurred = false;
   if (!InjurySystem.isInjured(newGameState.player)) {
-    // Daily injury risk: rare but possible (~3-5% per week effectively)
-    // Base: 0.5% per day + up to 2% more if fitness is low
-    const baseRisk = 0.005;
-    const fitnessPenalty = (1 - newGameState.player.fitness / 100) * 0.02;
+    // Daily injury risk: very rare (~1-2 blessures par saison)
+    // Base: 0.1% per day + up to 0.5% more if fitness is very low
+    const baseRisk = 0.001;
+    const fitnessPenalty = newGameState.player.fitness < 30 ? 0.005 : (1 - newGameState.player.fitness / 100) * 0.003;
     const injuryRisk = baseRisk + fitnessPenalty;
     if (rng.random() < injuryRisk) {
       const injury = InjurySystem.generateInjury(rng);
@@ -749,7 +749,7 @@ export function playMatch(
 
   // 6. Post-match injury risk (~8% chance, higher if fitness is low)
   if (!InjurySystem.isInjured(newGameState.player)) {
-    const postMatchInjuryRisk = 0.04 + (1 - newGameState.player.fitness / 100) * 0.06; // 4-10%
+    const postMatchInjuryRisk = 0.02 + (newGameState.player.fitness < 40 ? 0.03 : 0.01); // 3-5% only if low fitness
     if (rng.random() < postMatchInjuryRisk) {
       const injury = InjurySystem.generateInjury(rng);
       newGameState = {
@@ -949,7 +949,7 @@ export function simulateMatch(
 
   // 7. Post-match injury risk (~8% chance, higher if fitness is low)
   if (!InjurySystem.isInjured(newGameState.player)) {
-    const postMatchInjuryRisk = 0.04 + (1 - newGameState.player.fitness / 100) * 0.06; // 4-10%
+    const postMatchInjuryRisk = 0.02 + (newGameState.player.fitness < 40 ? 0.03 : 0.01); // 3-5% only if low fitness
     if (rng.random() < postMatchInjuryRisk) {
       const injury = InjurySystem.generateInjury(rng);
       newGameState = {
