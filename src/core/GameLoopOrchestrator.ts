@@ -665,12 +665,13 @@ export function playMatch(
       league.division.country === state.career.currentClub.country &&
       league.division.level === state.career.currentClub.division.level;
 
-    // Simulate all matches for this matchday in this league
+    // Simulate all matches for this matchday in this league (exclude player's match)
     const matchdayResult = simulateMatchday(
       config.matchday,
       [league],
       clubsLookup,
-      rng
+      rng,
+      isPlayerLeague ? playerClubId : undefined
     );
 
     if (isPlayerLeague) {
@@ -864,12 +865,13 @@ export function simulateMatch(
       league.division.country === state.career.currentClub.country &&
       league.division.level === state.career.currentClub.division.level;
 
-    // Simulate all matches for this matchday in this league
+    // Simulate all matches for this matchday in this league (exclude player's match)
     const matchdayResult = simulateMatchday(
       config.matchday,
       [league],
       clubsLookupSim,
-      rng
+      rng,
+      isPlayerLeague ? playerClubId : undefined
     );
 
     if (isPlayerLeague) {

@@ -71,7 +71,8 @@ export function simulateMatchday(
   matchday: number,
   leagues: LeagueState[],
   clubsLookup?: Map<string, Club>,
-  rng: RNG = defaultRNG
+  rng: RNG = defaultRNG,
+  excludeClubId?: string
 ): MatchdayResult {
   const allResults: MatchResult[] = [];
   let allStandings: LeagueStanding[] = [];
@@ -79,7 +80,12 @@ export function simulateMatchday(
 
   for (const league of leagues) {
     // Get scheduled matches for this matchday in this league
-    const matchdayMatches = league.schedule.filter((m) => m.matchday === matchday);
+    const matchdayMatches = league.schedule.filter((m) => {
+      if (m.matchday !== matchday) return false;
+      // Exclude the player's match if specified (it will be added separately)
+      if (excludeClubId && (m.homeTeam === excludeClubId || m.awayTeam === excludeClubId)) return false;
+      return true;
+    });
 
     const leagueResults: MatchResult[] = [];
 
