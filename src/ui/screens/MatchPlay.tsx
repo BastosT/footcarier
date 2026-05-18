@@ -491,12 +491,16 @@ export function MatchPlay() {
     );
   }
 
-  const nextMatch = gameState.time.schedule.nextMatch;
   const playerClubName = gameState.career.currentClub.name;
-  // Use matchState.isPlayerHome (set during init from pendingConfig) for consistency
+  // Use pendingMatchConfig as primary source for opponent (nextMatch can be stale)
   const renderIsPlayerHome = matchState.isPlayerHome;
-  const opponentName = findClubName(gameState.leagues, renderIsPlayerHome ? nextMatch?.awayTeam : nextMatch?.homeTeam)
-    ?? (pendingMatchConfig ? (renderIsPlayerHome ? pendingMatchConfig.awayTeam.name : pendingMatchConfig.homeTeam.name) : 'Adversaire');
+  let opponentName = 'Adversaire';
+  if (pendingMatchConfig) {
+    opponentName = renderIsPlayerHome ? pendingMatchConfig.awayTeam.name : pendingMatchConfig.homeTeam.name;
+  } else {
+    const nextMatch = gameState.time.schedule.nextMatch;
+    opponentName = findClubName(gameState.leagues, renderIsPlayerHome ? nextMatch?.awayTeam : nextMatch?.homeTeam) ?? 'Adversaire';
+  }
 
   const homeTeamName = renderIsPlayerHome ? playerClubName : opponentName;
   const awayTeamName = renderIsPlayerHome ? opponentName : playerClubName;
