@@ -403,12 +403,14 @@ export function MatchPlay() {
   }
 
   const nextMatch = gameState.time.schedule.nextMatch;
-  const isPlayerHome = gameState.career.currentClub.id === nextMatch?.homeTeam;
   const playerClubName = gameState.career.currentClub.name;
-  const opponentName = findClubName(gameState.leagues, isPlayerHome ? nextMatch?.awayTeam : nextMatch?.homeTeam) ?? 'Adversaire';
+  // Use matchState.isPlayerHome (set during init from pendingConfig) for consistency
+  const renderIsPlayerHome = matchState.isPlayerHome;
+  const opponentName = findClubName(gameState.leagues, renderIsPlayerHome ? nextMatch?.awayTeam : nextMatch?.homeTeam)
+    ?? (pendingMatchConfig ? (renderIsPlayerHome ? pendingMatchConfig.awayTeam.name : pendingMatchConfig.homeTeam.name) : 'Adversaire');
 
-  const homeTeamName = isPlayerHome ? playerClubName : opponentName;
-  const awayTeamName = isPlayerHome ? opponentName : playerClubName;
+  const homeTeamName = renderIsPlayerHome ? playerClubName : opponentName;
+  const awayTeamName = renderIsPlayerHome ? opponentName : playerClubName;
 
   const currentAction = matchState.isPaused
     ? matchState.actions[matchState.currentActionIndex]
