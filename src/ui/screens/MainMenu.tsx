@@ -26,6 +26,11 @@ export function MainMenu() {
       // Migrate old saves: add missing fields with defaults
       const migrated = {
         ...gameState,
+        player: {
+          ...gameState.player,
+          jerseyNumber: gameState.player?.jerseyNumber ?? 10,
+          injury: gameState.player?.injury ?? null,
+        },
         lifestyle: {
           possessions: [],
           investments: [],
@@ -36,7 +41,7 @@ export function MainMenu() {
           sponsorContracts: [],
           pets: [],
           casinoHistory: [],
-          ...gameState.lifestyle,
+          ...(gameState.lifestyle ?? {}),
           // Ensure nested objects have all fields
           instagram: { followers: 1000, posts: [], weeklyPostDone: false, ...(gameState.lifestyle?.instagram ?? {}) },
           youtube: { subscribers: 0, videos: [], weeklyUploadDone: false, monthlyRevenue: 0, ...(gameState.lifestyle?.youtube ?? {}) },
@@ -47,10 +52,10 @@ export function MainMenu() {
           popularity: 20, reputation: 20, coachRelation: 50, teamRelation: 50,
           teamMorale: 50, teamAmbiance: 50, controversyCount: 0, scandalActive: false,
           socialFeed: [], pendingInterviews: [],
-          ...gameState.social,
+          ...(gameState.social ?? {}),
         },
         career: {
-          ...gameState.career,
+          ...(gameState.career ?? {}),
           isCaptain: gameState.career?.isCaptain ?? false,
         },
         playerCareerStats: {
@@ -58,7 +63,7 @@ export function MainMenu() {
           allTime: { matchesPlayed: 0, goals: 0, assists: 0, shots: 0, dribbles: 0, tackles: 0, avgRating: 0, totalRating: 0, cleanSheets: 0 },
           clGoals: 0,
           seasonHistory: [],
-          ...gameState.playerCareerStats,
+          ...(gameState.playerCareerStats ?? {}),
         },
         agent: gameState.agent ?? {
           currentAgent: { id: 'agent-family', name: 'Papa (agent familial)', tier: 'family', emoji: '👨‍👦', commission: 0, offerBonus: 1.0, networkLevel: 1, description: 'Pas de commission mais réseau limité.' },

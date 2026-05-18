@@ -496,6 +496,7 @@ export function MainScreenConnected() {
       }
     } catch (e) {
       console.error('handleAdvanceDay error:', e);
+      alert('Erreur: ' + (e instanceof Error ? e.message : String(e)));
     }
   };
 
@@ -575,6 +576,7 @@ export function MainScreenConnected() {
       }
     } catch (e) {
       console.error('SimulateWeek error:', e);
+      alert('Erreur semaine: ' + (e instanceof Error ? e.message : String(e)));
     }
   };
 
