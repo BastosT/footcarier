@@ -22,8 +22,8 @@ export function LifeHub() {
 
   return (
     <div className="min-h-dvh flex flex-col bg-background">
-      {/* Sub-tabs - scrollable */}
-      <div className="flex bg-surface border-b border-surface-light overflow-x-auto scrollbar-none">
+      {/* Sub-tabs — pill style, scrollable */}
+      <div className="flex gap-1 px-3 py-2 bg-background overflow-x-auto scrollbar-none">
         {([
           { id: 'shop' as LifeTab, label: '🛍️ Boutique' },
           { id: 'possessions' as LifeTab, label: '🏠 Possessions' },
@@ -36,10 +36,10 @@ export function LifeHub() {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex-shrink-0 px-4 py-3 text-xs font-medium whitespace-nowrap transition-colors ${
+            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
               activeTab === tab.id
-                ? 'text-primary-light border-b-2 border-primary-light'
-                : 'text-text-muted'
+                ? 'bg-primary text-white'
+                : 'bg-surface text-text-muted active:scale-95'
             }`}
           >
             {tab.label}

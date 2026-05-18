@@ -20,38 +20,25 @@ export function PlayerHub() {
 
   return (
     <div className="min-h-dvh flex flex-col bg-background">
-      {/* Sub-tabs */}
-      <div className="flex bg-surface border-b border-surface-light">
-        <button
-          onClick={() => setActiveTab('stats')}
-          className={`flex-1 py-3 text-sm font-medium transition-colors ${
-            activeTab === 'stats'
-              ? 'text-primary-light border-b-2 border-primary-light'
-              : 'text-text-muted'
-          }`}
-        >
-          📊 Stats
-        </button>
-        <button
-          onClick={() => setActiveTab('transfers')}
-          className={`flex-1 py-3 text-sm font-medium transition-colors ${
-            activeTab === 'transfers'
-              ? 'text-primary-light border-b-2 border-primary-light'
-              : 'text-text-muted'
-          }`}
-        >
-          💰 Transferts
-        </button>
-        <button
-          onClick={() => setActiveTab('agent')}
-          className={`flex-1 py-3 text-sm font-medium transition-colors ${
-            activeTab === 'agent'
-              ? 'text-primary-light border-b-2 border-primary-light'
-              : 'text-text-muted'
-          }`}
-        >
-          🕴️ Agent
-        </button>
+      {/* Sub-tabs — pill style */}
+      <div className="flex gap-1 px-3 py-2 bg-background overflow-x-auto scrollbar-none">
+        {([
+          { id: 'stats' as const, label: '📊 Stats' },
+          { id: 'transfers' as const, label: '💰 Transferts' },
+          { id: 'agent' as const, label: '🕴️ Agent' },
+        ]).map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex-shrink-0 px-3.5 py-2 rounded-full text-xs font-semibold transition-all ${
+              activeTab === tab.id
+                ? 'bg-primary text-white'
+                : 'bg-surface text-text-muted active:scale-95'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {/* Content */}

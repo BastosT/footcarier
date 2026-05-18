@@ -43,48 +43,26 @@ export function ClubHub() {
 
   return (
     <div className="min-h-dvh flex flex-col bg-background">
-      {/* Sub-tabs */}
-      <div className="flex bg-surface border-b border-surface-light overflow-x-auto scrollbar-none">
-        <button
-          onClick={() => setActiveTab('standings')}
-          className={`flex-shrink-0 flex-1 py-3 text-sm font-medium transition-colors ${
-            activeTab === 'standings'
-              ? 'text-primary-light border-b-2 border-primary-light'
-              : 'text-text-muted'
-          }`}
-        >
-          📋 Classement
-        </button>
-        <button
-          onClick={() => setActiveTab('calendar')}
-          className={`flex-shrink-0 flex-1 py-3 text-sm font-medium transition-colors ${
-            activeTab === 'calendar'
-              ? 'text-primary-light border-b-2 border-primary-light'
-              : 'text-text-muted'
-          }`}
-        >
-          📅 Calendrier
-        </button>
-        <button
-          onClick={() => setActiveTab('champions')}
-          className={`flex-shrink-0 flex-1 py-3 text-sm font-medium transition-colors ${
-            activeTab === 'champions'
-              ? 'text-primary-light border-b-2 border-primary-light'
-              : 'text-text-muted'
-          }`}
-        >
-          🏆 LDC
-        </button>
-        <button
-          onClick={() => setActiveTab('locker')}
-          className={`flex-shrink-0 flex-1 py-3 text-sm font-medium transition-colors ${
-            activeTab === 'locker'
-              ? 'text-primary-light border-b-2 border-primary-light'
-              : 'text-text-muted'
-          }`}
-        >
-          👕 Vestiaire
-        </button>
+      {/* Sub-tabs — pill style */}
+      <div className="flex gap-1 px-3 py-2 bg-background overflow-x-auto scrollbar-none">
+        {([
+          { id: 'standings' as const, label: '📋 Classement' },
+          { id: 'calendar' as const, label: '📅 Calendrier' },
+          { id: 'champions' as const, label: '🏆 LDC' },
+          { id: 'locker' as const, label: '👕 Vestiaire' },
+        ]).map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex-shrink-0 px-3.5 py-2 rounded-full text-xs font-semibold transition-all ${
+              activeTab === tab.id
+                ? 'bg-primary text-white'
+                : 'bg-surface text-text-muted active:scale-95'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {/* Content */}
