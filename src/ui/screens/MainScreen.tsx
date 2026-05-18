@@ -63,6 +63,11 @@ export function MainScreen({
             </h1>
             <p className="text-xs text-text-muted">
               {player.position} • <span className="text-primary-light font-semibold">{player.overallRating}</span> OVR
+              {player.injury && player.injury.weeksRemaining > 0 && (
+                <span className="ml-1.5 inline-flex items-center gap-0.5 bg-red-500/20 text-red-400 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                  🏥 {player.injury.weeksRemaining}sem
+                </span>
+              )}
             </p>
             <div className="flex items-center gap-2 mt-1">
               <div className="flex-1 h-1.5 bg-surface-light rounded-full overflow-hidden">
