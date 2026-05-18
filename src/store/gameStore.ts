@@ -287,8 +287,7 @@ useGameStore.subscribe((state, prevState) => {
         ...state.gameState!,
         championsLeague: state.championsLeague ?? state.gameState!.championsLeague ?? null,
       };
-      const slot = state.gameState!.saves?.slot ?? 1;
-      saveManager.saveGame(slot, gameStateToSave).catch(() => {
+      saveManager.saveGame(1, gameStateToSave).catch(() => {
         // Silent fail — don't block gameplay
       });
     }, 500);
