@@ -81,6 +81,43 @@ export function updateCareerStatsFromMatch(summary: LastMatchSummary): void {
       },
     },
   });
+
+  // Post-match stat gain: ~15% chance per match (= ~5 times per 34-match season)
+  // Gain +1 or +2 on a skill related to match performance
+  if (Math.random() < 0.15) {
+    const freshState = useGameStore.getState();
+    if (freshState.gameState) {
+      const player = freshState.gameState.player;
+      // Choose skill based on what happened in the match
+      type Skill = 'pace' | 'shooting' | 'passing' | 'dribbling' | 'defending' | 'physical';
+      let skill: Skill;
+      if (summary.playerGoals > 0) skill = 'shooting';
+      else if (summary.playerAssists > 0) skill = 'passing';
+      else if (summary.playerDribbles > 1) skill = 'dribbling';
+      else if (summary.playerTackles > 1) skill = 'defending';
+      else {
+        const skills: Skill[] = ['pace', 'shooting', 'passing', 'dribbling', 'defending', 'physical'];
+        skill = skills[Math.floor(Math.random() * skills.length)];
+      }
+
+      const gain = Math.random() < 0.7 ? 1 : 2; // 70% chance +1, 30% chance +2
+      const currentVal = player.stats[skill];
+      const newVal = Math.min(player.potential, currentVal + gain);
+
+      if (newVal > currentVal) {
+        const newStats = { ...player.stats, [skill]: newVal };
+        const newOVR = Math.round(
+          (newStats.pace + newStats.shooting + newStats.passing + newStats.dribbling + newStats.defending + newStats.physical) / 6
+        );
+        useGameStore.setState({
+          gameState: {
+            ...freshState.gameState,
+            player: { ...player, stats: newStats, overallRating: newOVR },
+          },
+        });
+      }
+    }
+  }
 }
 
 /**
