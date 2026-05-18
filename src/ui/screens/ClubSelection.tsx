@@ -26,7 +26,7 @@ export function ClubSelection() {
     const countries: Country[] = ['france', 'spain', 'england', 'italy', 'germany'];
     // Shuffle and pick 4
     const shuffled = [...countries].sort(() => Math.random() - 0.5);
-    const selected = shuffled.slice(0, 4);
+    const selected = shuffled.slice(0, 5);
 
     return selected.map((country) => {
       const clubs = clubsByCountry[country];
