@@ -281,10 +281,11 @@ export function useGameLoop(): UseGameLoopReturn {
           (m.homeTeam === playerClubId || m.awayTeam === playerClubId)
       );
 
-      if (nextMatch &&
-        currentGameState.time.currentDate.day === nextMatch.date.day &&
-        currentGameState.time.currentDate.month === nextMatch.date.month &&
-        currentGameState.time.currentDate.year === nextMatch.date.year) {
+      if (nextMatch && (
+        currentGameState.time.currentDate.year > nextMatch.date.year ||
+        (currentGameState.time.currentDate.year === nextMatch.date.year && currentGameState.time.currentDate.month > nextMatch.date.month) ||
+        (currentGameState.time.currentDate.year === nextMatch.date.year && currentGameState.time.currentDate.month === nextMatch.date.month && currentGameState.time.currentDate.day >= nextMatch.date.day)
+      )) {
         // It's a match day — stop here
         stoppedOnMatchDay = true;
         break;
