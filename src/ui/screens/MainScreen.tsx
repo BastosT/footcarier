@@ -398,12 +398,11 @@ export function MainScreenConnected() {
     return null;
   }
 
-  // Check if TODAY is a match day (current date >= next match date)
-  const isMatchDay = nextMatch !== null && (
-    time.currentDate.year > nextMatch.date.year ||
-    (time.currentDate.year === nextMatch.date.year && time.currentDate.month > nextMatch.date.month) ||
-    (time.currentDate.year === nextMatch.date.year && time.currentDate.month === nextMatch.date.month && time.currentDate.day >= nextMatch.date.day)
-  );
+  // Check if TODAY is a match day (exact date match)
+  const isMatchDay = nextMatch !== null &&
+    time.currentDate.day === nextMatch.date.day &&
+    time.currentDate.month === nextMatch.date.month &&
+    time.currentDate.year === nextMatch.date.year;
 
   // Build match config from the next match in the schedule
   const buildMatchConfig = () => {

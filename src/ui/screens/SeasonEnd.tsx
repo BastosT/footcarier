@@ -71,10 +71,13 @@ export function SeasonEnd() {
       if (clubs.length === 18) {
         try {
           schedule = generateSeasonSchedule(clubs);
-          // Update year in schedule dates
+          // Properly offset dates: matches generated with year 2024 as base
+          // Need to shift to newYear (keeping month/day, adjusting year offset)
+          const baseYear = 2024;
+          const yearOffset = newYear - baseYear;
           schedule = schedule.map((m) => ({
             ...m,
-            date: { ...m.date, year: newYear },
+            date: { ...m.date, year: m.date.year + yearOffset },
           }));
         } catch { schedule = []; }
       }
